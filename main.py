@@ -3,9 +3,13 @@
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
-test = "asdasd"
 
-if test:
+test = {}
+deleted = test.pop(2, '')
+
+if deleted:
     print(True)
 else:
     print(False)
+
+print(deleted)

@@ -56,7 +56,7 @@ class User(Resource):
         return f"{user_id} has been successfully deleted", 200
 
 
-api.add_resource(User, "/api/user/<str:user_id>")
+api.add_resource(User, "/api/user/<string:user_id>")
 
 
 class ChatRoom(Resource):
@@ -66,7 +66,7 @@ class ChatRoom(Resource):
     def get(self, room_id):
         abort_if_not_exists(room_id, rooms, "Room does not exist")
 
-        if room_id is 'all':
+        if room_id == 'all':
             output = []
             for i in rooms:
                 output.append(i)
@@ -86,7 +86,7 @@ class ChatRoom(Resource):
         return rooms[room_id], 201
 
 
-api.add_resource(ChatRoom, "/api/rooms/<str:room_id>")
+api.add_resource(ChatRoom, "/api/rooms/<string:room_id>")
 
 if __name__ == "__main__":
     app.run(debug=True)

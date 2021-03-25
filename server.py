@@ -7,6 +7,7 @@ api = Api(app)
 users = {}
 
 
+
 def abort_if_not_exists(some_id, some_dict: dict, abort_message: str):
     if some_id not in some_dict:
         abort(404, message=abort_message)

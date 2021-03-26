@@ -1,4 +1,7 @@
 import requests
+import json
+from datetime import datetime
+from time import sleep
 
 route = "http://127.0.0.1:5000/api/rooms/"
 
@@ -38,7 +41,40 @@ users.update({'vader': {
 
 some_dict['chicken']['Users'].update({'vader': users['vader']})
 
-print(str.__name__)
+messages = {str(datetime.now()): {
+    'user': 'uyqn',
+    'room': 'chicken',
+    'timestamp': datetime.now().strftime("%c"),
+    'message': "I love chickens!"
+}}
+
+sleep(0.1)
+
+messages.update({
+    str(datetime.now()): {
+        'user': 'panders',
+        'room': 'chicken',
+        'time': datetime.now().strftime("%c"),
+        'message': "I love chicken too!"
+    }
+})
+
+sleep(0.1)
+
+messages.update({
+    str(datetime.now()): {
+        'user': 'torresso',
+        'room': 'chicken',
+        'time': datetime.now().strftime("%c"),
+        'message': "Let's go grab some chicken then!"
+    }
+})
+
+filtered = list(messages.values())
+filter2 = filter(lambda m: m['user'] == 'panders', filtered)
+
+for x in filter2:
+    print(x)
 
 #  response = requests.post(route+'chicken', {'Name': 'Chicken wings', 'Size': 20})
 

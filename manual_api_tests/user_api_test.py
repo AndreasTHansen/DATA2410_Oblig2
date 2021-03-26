@@ -23,7 +23,7 @@ def post_test():
         except ValueError:
             print("Age must be an integer")
     email = input(f"Enter email:str of user id {user_id}: ")
-    print(requests.post(route + user_id, {'Name': name, 'Age': age, 'Email': email}).json())
+    print(requests.post(route + user_id, {'name': name, 'age': age, 'email': email}).json())
 
 
 def delete_test():

@@ -22,7 +22,7 @@ def post_test():
             break
         except ValueError:
             print("Room size must be an integer")
-    print(requests.post(route + room_id, {'Name': name, 'Size': size}).json())
+    print(requests.post(route + room_id, {'name': name, 'size': size}).json())
 
 
 def delete_test():

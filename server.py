@@ -1,11 +1,16 @@
 from flask import Flask
 from flask_restful import Api, Resource, reqparse, abort
+from json import dumps
+from datetime import datetime
 
 app = Flask(__name__)
 api = Api(app)
 
 users = {}
 rooms = {}
+messages = {}
+
+json_indent = 1
 
 
 def abort_if_not_exists(some_id, some_dict: dict, abort_message: str):
@@ -19,30 +24,31 @@ def abort_if_exists(some_id, some_dict: dict, abort_message: str):
 
 
 class User(Resource):
-    def get(self, user_id=None):
+    def get(self, user_id=None) -> (str, int):
         if user_id:
             abort_if_not_exists(user_id, users, f"Cannot find {user_id}")
-            return users[user_id], 200
-        return list(users.keys()), 200
+            return dumps(users[user_id], indent=json_indent), 200
+        return dumps(users, indent=json_indent), 200
 
-    def post(self, user_id=None):
+    def post(self, user_id=None) -> (str, int):
         if not user_id:
             return f"User id required to post a new user", 400
         if user_id:
             abort_if_exists(user_id, users, f"A user with user id {user_id} already exists")
             users[user_id] = reqparse.RequestParser() \
-                .add_argument("Name", type=str, required=True) \
-                .add_argument("Age", type=int, required=True) \
-                .add_argument("Email", type=str, required=True) \
-                .parse_args()
-            return users[user_id], 201
+                .add_argument('rooms', type=list, default=[]) \
+                .parse_args(strict=True)
+            return dumps(users[user_id], indent=json_indent), 201
 
-    def delete(self, user_id=None):
+    def delete(self, user_id=None) -> (str, int):
         if not user_id:
-            return f"User id is required to delete a user", 400
-        if users.pop(user_id, True):
+            return f"A user id is required to delete a user", 400
+
+        deleted_user = users.pop(user_id, None)
+
+        if deleted_user is None:
             return f"Could not find {user_id} to delete", 404
-        return f"{user_id} has been successfully deleted", 200
+        return dumps(deleted_user, indent=json_indent), 200
 
 
 api.add_resource(User, "/api/user/", "/api/user/<string:user_id>")
@@ -63,9 +69,10 @@ class ChatRoom(Resource):
             return f"Cannot create a room without a room id", 400
         abort_if_exists(room_id, rooms, "Room already exists")
         rooms[room_id] = reqparse.RequestParser() \
-            .add_argument('Name', type=str, required=True) \
-            .add_argument('Size', type=int, required=True) \
-            .add_argument('Users', type=dict, default={}) \
+            .add_argument('name', type=str, required=True) \
+            .add_argument('size', type=int, required=True) \
+            .add_argument('users', type=list, default=[]) \
+            .add_argument('messages', type=list, default=[]) \
             .parse_args()
         return rooms[room_id], 201
 
@@ -75,50 +82,70 @@ api.add_resource(ChatRoom, "/api/rooms/", "/api/rooms/<string:room_id>")
 
 class RoomUsers(Resource):
     def get(self, room_id):
-        abort_if_not_exists(room_id, rooms, f"Unable to find the room with room id {room_id}")
-        return rooms[room_id]['Users']
+        abort_if_not_exists(room_id, rooms, f"Unable to find the room with room id {room_id}!")
+        return dumps(rooms[room_id]['users']), 200
 
-    def post(self, room_id, user_id=None):
+    def post(self, room_id, user_id):
         abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}")
-        if not user_id:
-            pass
         abort_if_not_exists(user_id, users, f"Cannot find user with user id {user_id}")
+        rooms[room_id]['users'].append(user_id)
+        users[user_id]['rooms'].append(room_id)
+        return dumps(rooms[room_id]['users']), 200
 
+    # Adding a delete request so a user can leave a chat room
+    def delete(self, room_id, user_id):
+        abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}")
+        abort_if_not_exists(user_id, users, f"Cannot find user with user id {user_id}")
+        # Since every user_id's should be unique we do not need to have any concern when using remove on an array:
+        rooms[room_id]['users'].remove(user_id)
+        users[user_id]['rooms'].remove(room_id)
+        return dumps(rooms[room_id]['users']), 200
+
+
+api.add_resource(RoomUsers, "/api/room/<string:room_id>/users", "/api/room/<string:room_id>/users/<string:user_id>")
 
 
 class RoomMessage(Resource):
-    messages = {}
-
-    def get(self, message_id=None):
-        if not message_id:
-            abort_if_not_exists(message_id, self.messages, "Message does not exist")
-            return self.messages[message_id], 200
-        return list(self.messages.keys()), 200
+    def get(self, room_id):
+        abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}!")
+        return dumps(rooms[room_id]['messages'], indent=json_indent), 200
 
 
-api.add_resource(RoomMessage, "/api/rooms/<room-id>/messages", "/api/rooms/<room-id>/messages/<string:message-id>")
+api.add_resource(RoomMessage, "/api/rooms/<room-id>/messages")
 
 
-class UserMessage(Resource):    # Litt usikker på hvordan jeg skal gjøre dette med tanke på å ta inn bruker,
-                                # Men lager det supersimpelt nå
-    messages = {}
+class UserMessage(Resource):
+    def get(self, room_id, user_id):
+        abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}")
+        abort_if_not_exists(user_id, users, f"Cannot find user with user id {user_id}!")
 
-    def get(self, message_id=None):
-        if not message_id:
-            abort_if_not_exists(message_id, self.messages, "Message does not exist")
-            return self.messages[message_id], 200
-        return list(self.messages.keys()), 200
+        # Get a list of all messages from a room:
+        messages_in_this_room = rooms[room_id]['messages']
+        messages_from_user = filter(lambda message: message['user'] == user_id, messages_in_this_room)
+        return dumps(list(messages_from_user), indent=json_indent), 200
 
-    def post(self, message_id=None):
-        self.messages[message_id] = reqparse.RequestParser() \
-            .add_argument("Username", type=User, required=True) \
-            .add_argument("Content", type=str, required=True) \
+    def post(self, room_id, user_id):
+        abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}")
+        abort_if_not_exists(user_id, users, f"Cannot find user with user id {user_id}!")
+
+        now = datetime.now()
+        message = reqparse.RequestParser() \
+            .add_argument('user', type=str, default=user_id) \
+            .add_argument('room', type=str, default=room_id) \
+            .add_argument('time', type=str, default=now.strftime("%c")) \
+            .add_argument('message', type=str, required=True) \
             .parse_args()
-        return self.messages[message_id], 201
+
+        rooms[room_id]['messages'].append(message)
+
+        return dumps(message, indent=json_indent), 200
 
 
-api.add_resource(UserMessage, "api/rooms/<room-id>/<user-id>/messages",
-                 "api/rooms/<room-id>/<user-id>/messages/<string:message-id>")
+api.add_resource(
+    UserMessage,
+    "api/rooms/<room-id>/<user-id>/messages",
+    "api/rooms/<room-id>/<user-id>/messages/<string:message-id>"
+)
 
 if __name__ == "__main__":
     app.run(debug=True)

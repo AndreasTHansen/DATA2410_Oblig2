@@ -85,5 +85,40 @@ class RoomUsers(Resource):
         abort_if_not_exists(user_id, users, f"Cannot find user with user id {user_id}")
 
 
+
+class RoomMessage(Resource):
+    messages = {}
+
+    def get(self, message_id=None):
+        if not message_id:
+            abort_if_not_exists(message_id, self.messages, "Message does not exist")
+            return self.messages[message_id], 200
+        return list(self.messages.keys()), 200
+
+
+api.add_resource(RoomMessage, "/api/rooms/<room-id>/messages", "/api/rooms/<room-id>/messages/<string:message-id>")
+
+
+class UserMessage(Resource):    # Litt usikker på hvordan jeg skal gjøre dette med tanke på å ta inn bruker,
+                                # Men lager det supersimpelt nå
+    messages = {}
+
+    def get(self, message_id=None):
+        if not message_id:
+            abort_if_not_exists(message_id, self.messages, "Message does not exist")
+            return self.messages[message_id], 200
+        return list(self.messages.keys()), 200
+
+    def post(self, message_id=None):
+        self.messages[message_id] = reqparse.RequestParser() \
+            .add_argument("Username", type=User, required=True) \
+            .add_argument("Content", type=str, required=True) \
+            .parse_args()
+        return self.messages[message_id], 201
+
+
+api.add_resource(UserMessage, "api/rooms/<room-id>/<user-id>/messages",
+                 "api/rooms/<room-id>/<user-id>/messages/<string:message-id>")
+
 if __name__ == "__main__":
     app.run(debug=True)

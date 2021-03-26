@@ -14,7 +14,7 @@ def get_test():
 
 
 def post_test():
-    room_id = input("Enter user id for posting: ")
+    room_id = input("Enter room id for posting: ")
     name = input(f"Enter name:str of room id {room_id}: ")
     while True:
         try:

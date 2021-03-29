@@ -49,7 +49,7 @@ class Room:
         return response.json(), response.status_code
 
     @staticmethod
-    def get_all_room_users(room_id: str) -> (dict, int):
+    def get_all_users(room_id: str) -> (dict, int):
         route = URL + f'/room/{room_id}/users'
         response = get(route)
         return response.json(), response.status_code
@@ -63,7 +63,7 @@ class Room:
 
 class Message:
     @staticmethod
-    def get_all(room_id: str, user_id: str) -> (dict, int):
+    def get_all_from_room(room_id: str, user_id: str) -> (dict, int):
         route = URL + f'/room/{room_id}/messages'
         response = get(route, {'user': user_id})
         return response.json(), response.status_code

@@ -54,7 +54,6 @@ def send_message():
                 join_room()
             else:
                 Message.send(active_room, user_id, message_input)
-                print(f"{user_id}: {message_input} \t {datetime.now().strftime('%c')}")
 
 
 def command(cmd: str) -> bool:

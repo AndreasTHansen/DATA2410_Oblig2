@@ -24,7 +24,7 @@ class Users(Resource):
         # Check if any user id has been provided
         if user_id:
             if not user_id.strip():
-                return {'message': f"User id is required to fetch a user"}, 200
+                return {'message': f"User id is required to fetch a user"}, 400  # Bad request
             # Check if specified user id exists
             abort_if_not_exists(user_id, users, f"Cannot find user with user id \"{user_id}\"")
 
@@ -35,8 +35,10 @@ class Users(Resource):
         return users, 200  # code 200 = OK
 
     def post(self) -> (dict, int):
-        # Collect necessary data to create a user
+        # Collect necessary data to create a user {'username': user_id}
         user = reqparse.RequestParser().add_argument('username', type=str, required=True).parse_args()
+        if not user['username'].strip():
+            return {'message': f"Username cannot be empty or blank!"}, 400  # Bad request
 
         # Check if the user already exists
         abort_if_exists(
@@ -47,7 +49,7 @@ class Users(Resource):
         # Create a new user:
         new_user = {
             user['username']: {
-            'rooms': []
+                'rooms': []
             }
         }
 
@@ -98,7 +100,7 @@ class ChatRooms(Resource):
         # Retrieve data
         room = reqparse.RequestParser().add_argument('name', type=str, required=True).parse_args()
         # Abort if the room already exists
-        abort_if_exists(room['name'], rooms, f"{room['name']} already exists!")
+        abort_if_exists(room['name'], rooms, f"{room['name']} already exists!")  # 409
         # Create a room based on the name given
         new_room = {room['name']: {
             'name': room['name'],
@@ -108,23 +110,23 @@ class ChatRooms(Resource):
         # Add this room to our dictionary
         rooms.update(new_room)
         # Return the room as json format
-        return new_room, 201
+        return new_room, 201  # Created
 
 
 api.add_resource(ChatRooms, "/api/rooms", "/api/room/<string:room_id>")
 
 
 class RoomUsers(Resource):
-    def get(self, room_id: str) -> (dict, int):
+    def get(self, room_id: str) -> (list, int):
         # Check if room_id exists
         abort_if_not_exists(room_id, rooms, f"Unable to find the room with room id {room_id}!")
 
         # Return json format of all the users in this room
         return rooms[room_id]['users'], 200
 
-    def post(self, room_id: str) -> (dict, int):
+    def post(self, room_id: str) -> (list, int):
         # Check if room_id exists
-        abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}!")
+        abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}!")  # 404
 
         # To join a room append a user to the list of users in that room:
         # First check if the user is registered:
@@ -133,7 +135,7 @@ class RoomUsers(Resource):
         abort_if_not_exists(user, users, f"Cannot find user with user id {user}!")
 
         # Then check if the user is already in this room
-        abort_if_exists(user, rooms[room_id]['users'], f"{user} is already a member of {room_id}")
+        abort_if_exists(user, rooms[room_id]['users'], f"{user} is already a member of {room_id}")  # 409
 
         # Add user to users list in this room
         rooms[room_id]['users'].append(user)
@@ -147,7 +149,7 @@ api.add_resource(RoomUsers, "/api/room/<string:room_id>/users")
 
 
 class Messages(Resource):  # Take a look at this
-    def get(self, room_id: str, user_id: str = None) -> (dict, int):
+    def get(self, room_id: str, user_id: str = None) -> (list, int):
         # Check if bot room_id
         abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}")
 
@@ -161,16 +163,16 @@ class Messages(Resource):  # Take a look at this
             )
 
             # Return all messages from that room if the user is in the room
-            return rooms[room_id]['messages'], 200
+            return rooms[room_id]['messages'], 200  # Ok
 
         # If a user id was provided we must then first check if the user
-        abort_if_not_exists(user_id, rooms[room_id]['users'], f"Cannot find user with user id {user_id}!")
+        abort_if_not_exists(user_id, rooms[room_id]['users'], f"Cannot find user with user id {user_id} in {room_id}!")
         # Get a list of all messages from a room:
         messages_in_this_room = rooms[room_id]['messages']
 
         # Filter through all the messages in this room and return all the messages this provided user_id
         messages_from_user = filter(lambda message: message['user'] == user_id, messages_in_this_room)
-        return list(messages_from_user), 200
+        return list(messages_from_user), 200  # Ok
 
     def post(self, room_id: str, user_id: str) -> (dict, int):
         # Check if room and user exists

@@ -1,2 +1,3 @@
-from simple import User, Room, Message
+from connections import User, Room, Message
 
+print(User.get_all())

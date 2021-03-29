@@ -75,7 +75,7 @@ class Message:
         return response.json(), response.status_code
 
     @staticmethod
-    def send(room_id: str, user_id: str, message: str) -> (dict, int):
+    def send(room_id, user_id: str, message: str) -> (dict, int):
         route = URL + f'/room/{room_id}/{user_id}/messages'
         response = post(route, {'message': message})
         return response.json(), response.status_code

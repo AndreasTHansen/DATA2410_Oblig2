@@ -20,7 +20,7 @@ def abort_if_exists(some_id: str, iterable: iter, abort_message: str):
 
 
 class Users(Resource):
-    def get(self, user_id: str = None) -> (str, int):
+    def get(self, user_id: str = None) -> (dict, int):
         # Check if any user id has been provided
         if user_id:
             if not user_id.strip():
@@ -34,7 +34,7 @@ class Users(Resource):
         # If no user id has been provided return the whole list as json format
         return users, 200  # code 200 = OK
 
-    def post(self) -> (str, int):
+    def post(self) -> (dict, int):
         # Collect necessary data to create a user
         user = reqparse.RequestParser().add_argument('username', type=str, required=True).parse_args()
 
@@ -45,9 +45,11 @@ class Users(Resource):
         )
 
         # Create a new user:
-        new_user = {user['username']: {
+        new_user = {
+            user['username']: {
             'rooms': []
-        }}
+            }
+        }
 
         # Add the new user to users:
         users.update(new_user)
@@ -55,7 +57,7 @@ class Users(Resource):
         # Return the created user in json format
         return new_user, 201  # created
 
-    def delete(self, user_id: str = None) -> (str, int):
+    def delete(self, user_id: str = None) -> (dict, int):
         # A user id must be provided to delete a user
         if not user_id:
             # If no user id has been provided return a string to prompting the caller to provide user id
@@ -78,7 +80,7 @@ api.add_resource(Users, "/api/users", "/api/user/<string:user_id>")
 class ChatRooms(Resource):
     # Gets room with room_id.
     # Returns either a key-value pair, or an array of key-value pairs.
-    def get(self, room_id=None):
+    def get(self, room_id: str = None) -> (dict, int):
         if room_id:  # Check if room id has been provided
             # Check if room id exists:
             abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}!")
@@ -92,7 +94,7 @@ class ChatRooms(Resource):
         return all_rooms, 200  # OK
 
     # Adds room with room_id
-    def post(self):
+    def post(self) -> (dict, int):
         # Retrieve data
         room = reqparse.RequestParser().add_argument('name', type=str, required=True).parse_args()
         # Abort if the room already exists
@@ -113,14 +115,14 @@ api.add_resource(ChatRooms, "/api/rooms", "/api/room/<string:room_id>")
 
 
 class RoomUsers(Resource):
-    def get(self, room_id: str) -> (str, int):
+    def get(self, room_id: str) -> (dict, int):
         # Check if room_id exists
         abort_if_not_exists(room_id, rooms, f"Unable to find the room with room id {room_id}!")
 
         # Return json format of all the users in this room
         return rooms[room_id]['users'], 200
 
-    def post(self, room_id: str) -> (str, int):
+    def post(self, room_id: str) -> (dict, int):
         # Check if room_id exists
         abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}!")
 
@@ -145,7 +147,7 @@ api.add_resource(RoomUsers, "/api/room/<string:room_id>/users")
 
 
 class Messages(Resource):  # Take a look at this
-    def get(self, room_id, user_id=None):
+    def get(self, room_id: str, user_id: str = None) -> (dict, int):
         # Check if bot room_id
         abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}")
 
@@ -170,7 +172,7 @@ class Messages(Resource):  # Take a look at this
         messages_from_user = filter(lambda message: message['user'] == user_id, messages_in_this_room)
         return list(messages_from_user), 200
 
-    def post(self, room_id, user_id):
+    def post(self, room_id: str, user_id: str) -> (dict, int):
         # Check if room and user exists
         abort_if_not_exists(room_id, rooms, f"Cannot find room with room id \"{room_id}\"!")
         abort_if_not_exists(user_id, users, f"Cannot find user with user id \"{user_id}\"!")

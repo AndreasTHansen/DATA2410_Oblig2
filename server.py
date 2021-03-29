@@ -1,6 +1,8 @@
 from flask import Flask
-from flask_restful import Api, Resource, reqparse, abort
+from flask_restful import Api, Resource, reqparse, abort, inputs
 from datetime import datetime
+from socket import socket, SHUT_RDWR
+from threading import Thread
 
 app = Flask(__name__)
 api = Api(app)
@@ -36,7 +38,13 @@ class Users(Resource):
 
     def post(self) -> (dict, int):
         # Collect necessary data to create a user {'username': user_id}
-        user = reqparse.RequestParser().add_argument('username', type=str, required=True).parse_args()
+        user = reqparse.RequestParser() \
+            .add_argument('username', type=str, required=True) \
+            .add_argument('push-notification', type=inputs.boolean, required=True) \
+            .add_argument('rooms', type=list, default=[]) \
+            .add_argument('unread-messages', type=dict, default={}) \
+            .parse_args(strict=True)
+
         if not user['username'].strip():
             return {'message': f"Username cannot be empty or blank!"}, 400  # Bad request
 
@@ -46,18 +54,11 @@ class Users(Resource):
             f"\"{user['username']}\" already exists!"
         )
 
-        # Create a new user:
-        new_user = {
-            user['username']: {
-                'rooms': []
-            }
-        }
-
         # Add the new user to users:
-        users.update(new_user)
+        users.update({user['username']: user})
 
         # Return the created user in json format
-        return new_user, 201  # created
+        return {user['username']: user}, 201  # created
 
     def delete(self, user_id: str = None) -> (dict, int):
         # A user id must be provided to delete a user
@@ -73,6 +74,21 @@ class Users(Resource):
 
         # Remove and return the user id, None is returned as default value to avoid KeyError
         return users.pop(user_id, None), 200  # OK
+
+    def patch(self, user_id: str) -> (dict, int):
+        abort_if_not_exists(user_id, users, f"Cannot find user with user id \"{user_id}\"!")
+        patched = reqparse.RequestParser() \
+            .add_argument('username', type=str) \
+            .add_argument('push-notification', type=inputs.boolean) \
+            .add_argument('rooms', type=list) \
+            .add_argument('unread-messages', type=dict) \
+            .parse_args()
+
+        for key in patched:
+            if patched[key] is not None:
+                users[user_id].update({key: patched[key]})
+
+        return users[user_id], 200  # OK
 
 
 # Add the class to route
@@ -105,7 +121,7 @@ class ChatRooms(Resource):
         new_room = {room['name']: {
             'name': room['name'],
             'users': [],
-            'messages': []
+            'messages': [],
         }}
         # Add this room to our dictionary
         rooms.update(new_room)
@@ -141,6 +157,7 @@ class RoomUsers(Resource):
         rooms[room_id]['users'].append(user)
         # Add room id to rooms list for this user
         users[user]['rooms'].append(room_id)
+        users[user]['unread-messages'].update({room_id: 0})
 
         return rooms[room_id]['users'], 200
 
@@ -161,6 +178,8 @@ class Messages(Resource):  # Take a look at this
                 user['user'], rooms[room_id]['users'],
                 f"Permission denied for {user} to get messages from {room_id}!"
             )
+
+            users[user['user']]['unread-messages'].update({room_id: 0})
 
             # Return all messages from that room if the user is in the room
             return rooms[room_id]['messages'], 200  # Ok
@@ -196,6 +215,9 @@ class Messages(Resource):  # Take a look at this
 
         rooms[room_id]['messages'].append(message)
 
+        for user in rooms[room_id]['users']:
+            users[user]['unread-messages'][room_id] += 1
+
         return message, 200
 
 
@@ -207,3 +229,38 @@ api.add_resource(
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+    server = socket()
+    server.bind(("127,0,0,1", 5000))
+    server.listen()
+
+    clients = {}
+
+
+    def push(user):
+        while users[user]['push-notification']:
+            clients_unread_messages = clients[user]['unread-messages']
+            users_unread_messages = users[user]['unread-messages']
+            for room in user['rooms']:
+                number_of_new_messages = users_unread_messages[room] - clients_unread_messages[room]
+                if number_of_new_messages > 0:
+                    clients[user]['client'] \
+                        .send(f"You have {number_of_new_messages} unread messages in room \"{room}\"".encode('utf8'))
+                elif number_of_new_messages < 0:
+                    clients[user]['unread-messages'][room] = 0
+
+        clients[user]['client'].shutdown(SHUT_RDWR)
+        clients[user]['client'].close()
+        clients.pop(user, None)
+
+
+
+    while True:
+        client, address = server.accept()
+        username = client.recv(1024).decode('utf8')
+        if users[username]['push-notification']:
+            clients[username] = {
+                'client': client,
+                'unread-messages': users[username]['unread-messages']
+            }
+            Thread(target=push, args=(username,)).start()

@@ -1,22 +1,27 @@
 from connections import User, Room, Message
-from datetime import datetime
 import sys
+from socket import socket, SHUT_RDWR
+from threading import Thread
 
 # Replace with input()
 user_id = sys.argv[1]
+push_active = False
 active_room = None
 
 
 # Check user
 def sign_in():
     global user_id
+    global push_active
 
     response, code = User.get(user_id)
+    if not response['push-notification']:
+        push_active = input(f"Do you want to turn on push notification? [y/n] ").strip() == 'y'
 
     if code == 404:
         print(response['message'])
         print(f"Registering {user_id} as a new user!")
-        User.add(user_id)
+        User.add(user_id, push_active)
 
 
 Room.add('General')
@@ -56,10 +61,30 @@ def send_message():
                 Message.send(active_room, user_id, message_input)
 
 
+def listen_for_push(client):
+    while push_active:
+        message = client.recv(1024).decode('utf8')
+        print(message)
+    client.shutdown(SHUT_RDWR)
+    client.close()
+
+
+def toggle_push_notification():
+    global push_active
+    User.toggle_push(user_id)
+    push_active = not push_active
+    if push_active:
+        client = socket()
+        client.connect(("127.0.0.1", 5000))
+        client.send(user_id.encode('utf8'))
+        Thread(target=listen_for_push, args=(client,)).start()
+
+
 def command(cmd: str) -> bool:
     commands = {
         '/join': join_room,
-        '/exit': sys.exit
+        '/exit': sys.exit,
+        '/toggle_push': toggle_push_notification
     }
 
     if cmd.strip() in commands:

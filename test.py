@@ -1,3 +1,3 @@
 from connections import User, Room, Message
-
-print(User.get_all())
+from json import dumps, loads
+from requests import post, get, patch

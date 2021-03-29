@@ -1,4 +1,4 @@
-from requests import get, post, delete
+from requests import get, post, patch, delete
 
 URL = "http://127.0.0.1:5000/api"
 
@@ -11,15 +11,22 @@ class User:
         return response.json(), response.status_code
 
     @staticmethod
-    def add(user_id: str) -> (dict, int):
+    def add(user_id: str, push_notification: bool = False) -> (dict, int):
         route = URL + f'/users'
-        response = post(route, {'username': user_id})
+        response = post(route, {'username': user_id, 'push-notification': push_notification})
         return response.json(), response.status_code
 
     @staticmethod
     def get(user_id: str) -> (dict, int):
         route = URL + f'/user/{user_id}'
         response = get(route)
+        return response.json(), response.status_code
+
+    @staticmethod
+    def toggle_push(user_id):
+        route = URL + f'/user/{user_id}'
+        current_push_notification = get(route).json()['push-notification']
+        response = patch(route, {'push-notification': not current_push_notification})
         return response.json(), response.status_code
 
     @staticmethod

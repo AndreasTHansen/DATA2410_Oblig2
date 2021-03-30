@@ -28,8 +28,6 @@ def sign_in():
     global push_active
 
     response, code = User.get(user_id)
-    print(response)
-    print(code)
 
     if is_bot:
 
@@ -37,7 +35,6 @@ def sign_in():
         # Either user does not exist, or it already exists
         while code == 404 or code == 403 or code == 409:
             res, code = User.add(user_id)
-
 
     else:
         if not response['push-notification']:
@@ -81,7 +78,7 @@ def join_room():
     if code == 409 or code == 200:
         active_room = room_id
         message_history, code = Message.get_all_from_room(active_room, user_id)
-        print(f" You are now in room {active_room}")
+        print(f" {user_id} is now in room {active_room}")
         for message in message_history:
             print(f"{message['user']}: {message['message']} \t {message['time']}")
 

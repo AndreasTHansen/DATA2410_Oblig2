@@ -1,8 +1,9 @@
 from flask import Flask
 from flask_restful import Api, Resource, reqparse, abort, inputs
 from datetime import datetime
-from socket import socket, SHUT_RDWR
+from socket import socket, SOL_SOCKET, SO_REUSEADDR
 from threading import Thread
+from time import sleep
 
 app = Flask(__name__)
 api = Api(app)
@@ -269,6 +270,8 @@ class Messages(Resource):  # Take a look at this
         # Crucial for push-notifications
         for user in rooms[room_id]['users']:
             users[user]['unread-messages'][room_id] += 1
+            if users[user]['push-notification']:
+                send_push_info(user, room_id)
 
         # Return the message
         return message, 200
@@ -281,43 +284,44 @@ api.add_resource(
 )
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
+def send_push_info(user_id, room_id):
+    push_notifier = socket()
+    push_notifier.connect(("127.0.0.1", 5005))
+    push_notifier.send('IMA-Push-Notifier'.encode('utf8'))
+    sleep(.01)
+    push_notifier.send(user_id.encode('utf8'))
+    sleep(.01)
+    push_notifier.send(str(users[user_id]['unread-messages'][room_id]).encode('utf8'))
+    sleep(.01)
+    push_notifier.send(room_id.encode('utf8'))
+
+
+def handle_push_info(client):
+    user = client.recv(1024).decode('utf8')
+    unread_messages = client.recv(1024).decode('utf8')
+    in_room = client.recv(1024).decode('utf8')
+
+    clients[user].send(in_room.encode('utf8'))
+    clients[user].send(unread_messages.encode('utf8'))
+
+
+# Creating a socket just for listening:
+def listening_socket():
+    service = socket()
+    service.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+    service.bind(("127.0.0.1", 5005))
+    service.listen()
     while True:
-        for room in rooms:
-            print(room['messages'].value)
-
-    server = socket()
-    server.bind(("127,0,0,1", 5000))
-    server.listen()
-
-    clients = {}
-
-
-    def push(user):
-        while users[user]['push-notification']:
-            clients_unread_messages = clients[user]['unread-messages']
-            users_unread_messages = users[user]['unread-messages']
-            for room in user['rooms']:
-                number_of_new_messages = users_unread_messages[room] - clients_unread_messages[room]
-                if number_of_new_messages > 0:
-                    clients[user]['client'] \
-                        .send(f"You have {number_of_new_messages} unread messages in room \"{room}\"".encode('utf8'))
-                elif number_of_new_messages < 0:
-                    clients[user]['unread-messages'][room] = 0
-
-        clients[user]['client'].shutdown(SHUT_RDWR)
-        clients[user]['client'].close()
-        clients.pop(user, None)
-
-
-    while True:
-        client, address = server.accept()
+        client, addr = service.accept()
+        # Assume that the user has been added:
+        # We wait for the client to send the socket the user_id: str
         username = client.recv(1024).decode('utf8')
-        if users[username]['push-notification']:
-            clients[username] = {
-                'client': client,
-                # {room1: 3, room2: 2, room3: 0}
-                'unread-messages': users[username]['unread-messages']
-            }
-            Thread(target=push, args=(username,)).start()
+        if username.__contains__('IMA-Push-Notifier'):
+            handle_push_info(client)
+        else:
+            clients.update({username: client})
+
+
+if __name__ == "__main__":
+    Thread(target=listening_socket).start()
+    app.run(debug=True)

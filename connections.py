@@ -78,9 +78,11 @@ class Message:
         return response.json(), response.status_code
 
     @staticmethod
-    def get_all_from_user(room_id: str, user_id: str, requester: str) -> (dict, int):
+    def get_all_from_user(room_id: str, user_id: str, requester: str = None) -> (dict, int):
         route = URL + f'/room/{room_id}/{user_id}/messages'
-        response = get(route, {'requester': requester})
+        response = get(route, {
+            'requester': user_id if requester is None else requester
+        })
         return response.json(), response.status_code
 
     @staticmethod

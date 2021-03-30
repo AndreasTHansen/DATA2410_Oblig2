@@ -17,6 +17,8 @@ def sign_in():
     response, code = User.get(user_id)
     if not response['push-notification']:
         push_active = input(f"Do you want to turn on push notification? [y/n] ").strip() == 'y'
+        if push_active:
+            toggle_push_notification()
 
     if code == 404:
         print(response['message'])
@@ -24,13 +26,13 @@ def sign_in():
         User.add(user_id, push_active)
 
 
-Room.add('General')
+Room.add('General', user_id)
 
 
 def join_room():
     global active_room
 
-    available_rooms, code = Room.get_all()
+    available_rooms, code = Room.get_all(user_id)
     print(f"Available rooms to join: \n {list(available_rooms)}")
     room_id = input(f"Which room do you want to join? ")
     join_this_room, code = Room.join(room_id, user_id)
@@ -38,7 +40,7 @@ def join_room():
     if code == 404:
         print(join_this_room['message'])
         if input(f"Do you want to create a new room \"{room_id}\"? [y/n] ") == 'y':
-            Room.add(room_id)
+            Room.add(room_id, user_id)
             join_this_room, code = Room.join(room_id, user_id)
 
     if code == 409 or code == 200:
@@ -62,6 +64,7 @@ def send_message():
 
 
 def listen_for_push(client):
+    global push_active
     while push_active:
         message = client.recv(1024).decode('utf8')
         print(message)

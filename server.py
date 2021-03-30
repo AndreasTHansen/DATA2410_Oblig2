@@ -164,7 +164,11 @@ class ChatRooms(Resource):
         abort_if_exists(room['name'], rooms, f"{room['name']} already exists!")  # 409
 
         # We will also by default add creator as a user of this room:
-        room['users'].append(room['creator'])
+        creator = room['creator']
+        room['users'].append(creator)
+        # Thus, also add the room id to the list of rooms of the user:
+        users[creator]['rooms'].append(room['name'])
+        users[creator]['unread-messages'].update({room['name']: 0})
 
         # Add this room to our dictionary with name as id
         rooms.update({room['name']: room})
@@ -203,6 +207,7 @@ class RoomUsers(Resource):
             rooms[room_id]['users'].append(user)
             # We will also add the room to the list of rooms the user is a member of
             users[user]['rooms'].append(room_id)
+            users[user]['unread-messages'].update({room_id: 0})
 
         # Return the list of users in this room:
         return rooms[room_id]['users'], 200  # OK
@@ -306,6 +311,7 @@ if __name__ == "__main__":
         if users[username]['push-notification']:
             clients[username] = {
                 'client': client,
+                # {room1: 3, room2: 2, room3: 0}
                 'unread-messages': users[username]['unread-messages']
             }
             Thread(target=push, args=(username,)).start()

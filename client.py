@@ -14,7 +14,7 @@ else:
     user_id = input("Please enter username")
 
 is_bot = False
-if user_id in ["Joe", "Anna", "Peter"]:
+if user_id in ["JoeBot", "Anna", "Peter"]:
     is_bot = True
 
 push_active = False
@@ -90,7 +90,9 @@ def send_message():
     global active_room
 
     if is_bot:
-        Message.send(active_room, user_id, eval(user_id)())
+        message = eval(user_id)()
+        Message.send(active_room, user_id, message)
+        print(f"Posted message: " + message + " to room " + room)
         return
 
     while True:

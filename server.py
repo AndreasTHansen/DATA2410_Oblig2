@@ -1,15 +1,16 @@
 from flask import Flask
 from flask_restful import Api, Resource, reqparse, abort, inputs
 from datetime import datetime
-from socket import socket, SHUT_RDWR, SOL_SOCKET, SO_REUSEADDR
+from socket import socket, SHUT_RDWR
 from threading import Thread
-from connections import User, Room, Message
 
 app = Flask(__name__)
 api = Api(app)
 
 users = {}
 rooms = {}
+
+clients = {}
 
 
 def abort_if_not_exists(some_id: str, iterable: iter, abort_message: str):
@@ -72,7 +73,7 @@ class Users(Resource):
         users.update({user['username']: user})
 
         # Return the created user in json format
-        return user, 201  # created
+        return {user['username']: user}, 201  # created
 
     def delete(self, user_id: str) -> (dict, int):
         # checking global restriction:
@@ -279,54 +280,44 @@ api.add_resource(
     "/api/room/<string:room_id>/<string:user_id>/messages"
 )
 
-clients = {}
-
-
-class Service:
-    @staticmethod
-    def push(username):
-        while True:
-            user, code = User.get(username)
-            user_joined_rooms = user['rooms']
-            for room in user_joined_rooms:
-                users_unread_messages = user['unread-messages'][room]
-                try:
-                    clients_unread_messages = clients[username]['unread-messages'][room]
-                except KeyError:
-                    clients[username]['unread-messages'].update({room: user['unread-messages'][room]})
-                    clients_unread_messages = clients[username]['unread-messages'][room]
-                unread_messages = users_unread_messages - clients_unread_messages
-                if unread_messages > 0:
-                    try:
-                        clients[username]['client'].send(
-                            f"New activity in room \"{room}\"\n".encode('utf8')
-                        )
-                        clients[username]['unread-messages'].update({room: user['unread-messages'][room]})
-                    except ConnectionResetError:
-                        break
-                elif unread_messages < 0:
-                    clients[username]['unread-messages'].update({room: user['unread-messages'][room]})
-
-    @staticmethod
-    def run():
-        service = socket()
-        service.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        service.bind(('127.0.0.1', 6969))
-        service.listen()
-        while True:
-            client, addr = service.accept()
-            username = client.recv(1024).decode('utf8')
-            user, code = User.get(username)
-            clients.update({username: {
-                'client': client,
-                'push-notification': user['push-notification'],
-                'unread-messages': user['unread-messages']
-            }})
-            # Start push-notification thread here:
-            push_thread = Thread(target=Service.push, args=(username,))
-            push_thread.start()
-
 
 if __name__ == "__main__":
-    Thread(target=Service.run).start()
     app.run(debug=True)
+    while True:
+        for room in rooms:
+            print(room['messages'].value)
+
+    server = socket()
+    server.bind(("127,0,0,1", 5000))
+    server.listen()
+
+    clients = {}
+
+
+    def push(user):
+        while users[user]['push-notification']:
+            clients_unread_messages = clients[user]['unread-messages']
+            users_unread_messages = users[user]['unread-messages']
+            for room in user['rooms']:
+                number_of_new_messages = users_unread_messages[room] - clients_unread_messages[room]
+                if number_of_new_messages > 0:
+                    clients[user]['client'] \
+                        .send(f"You have {number_of_new_messages} unread messages in room \"{room}\"".encode('utf8'))
+                elif number_of_new_messages < 0:
+                    clients[user]['unread-messages'][room] = 0
+
+        clients[user]['client'].shutdown(SHUT_RDWR)
+        clients[user]['client'].close()
+        clients.pop(user, None)
+
+
+    while True:
+        client, address = server.accept()
+        username = client.recv(1024).decode('utf8')
+        if users[username]['push-notification']:
+            clients[username] = {
+                'client': client,
+                # {room1: 3, room2: 2, room3: 0}
+                'unread-messages': users[username]['unread-messages']
+            }
+            Thread(target=push, args=(username,)).start()

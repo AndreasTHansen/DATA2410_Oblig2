@@ -11,7 +11,7 @@ class User:
         return response.json(), response.status_code
 
     @staticmethod
-    def add(user_id: str, push_notification: bool = False) -> (dict, int):
+    def add(user_id: str, push_notification: bool = True) -> (dict, int):
         route = URL + f'/users'
         response = post(route, {'username': user_id, 'push-notification': push_notification})
         return response.json(), response.status_code

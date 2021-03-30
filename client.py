@@ -14,16 +14,15 @@ def sign_in():
     global user_id
     global push_active
 
-    response, code = User.get(user_id)
-    if not response['push-notification']:
+    response, code = User.add(user_id)
+
+    print(response, code)
+    user, code = User.get(user_id)
+    push_active = user['push-notification']
+    if not push_active:
         push_active = input(f"Do you want to turn on push notification? [y/n] ").strip() == 'y'
         if push_active:
             toggle_push_notification()
-
-    if code == 404:
-        print(response['message'])
-        print(f"Registering {user_id} as a new user!")
-        User.add(user_id, push_active)
 
 
 Room.add('General', user_id)
@@ -65,7 +64,10 @@ def send_message():
 
 def listen_for_push(client):
     global push_active
+    print("Listen for push")
+    print(push_active)
     while push_active:
+        print("Inside loop")
         message = client.recv(1024).decode('utf8')
         print(message)
     client.shutdown(SHUT_RDWR)
@@ -74,12 +76,16 @@ def listen_for_push(client):
 
 def toggle_push_notification():
     global push_active
+    print(f"Toggle push")
     User.toggle_push(user_id)
-    push_active = not push_active
+    user, code = User.get(user_id)
+    push_active = user['push-notification']
+    print(push_active)
     if push_active:
         client = socket()
         client.connect(("127.0.0.1", 5000))
         client.send(user_id.encode('utf8'))
+        print("Starting thread")
         Thread(target=listen_for_push, args=(client,)).start()
 
 

@@ -2,6 +2,7 @@ from connections import User, Room, Message
 import sys
 from socket import socket, SHUT_RDWR
 from threading import Thread
+from bots import *
 
 # Replace with input()
 user_id = sys.argv[1]
@@ -49,14 +50,25 @@ def join_room():
 
     available_rooms, code = Room.get_all(user_id)
     print(f"Available rooms to join: \n {list(available_rooms)}")
-    room_id = input(f"Which room do you want to join? ")
+
+    if is_bot:
+        room_id = room
+
+    else:
+        room_id = input(f"Which room do you want to join? ")
+
     join_this_room, code = Room.join(room_id, user_id)
 
     if code == 404:
-        print(join_this_room['message'])
-        if input(f"Do you want to create a new room \"{room_id}\"? [y/n] ") == 'y':
+        if is_bot:
             Room.add(room_id, user_id)
             join_this_room, code = Room.join(room_id, user_id)
+
+        else:
+            print(join_this_room['message'])
+            if input(f"Do you want to create a new room \"{room_id}\"? [y/n] ") == 'y':
+                Room.add(room_id, user_id)
+                join_this_room, code = Room.join(room_id, user_id)
 
     if code == 409 or code == 200:
         active_room = room_id
@@ -68,6 +80,10 @@ def join_room():
 def send_message():
     global user_id
     global active_room
+
+    if is_bot:
+        Message.send(active_room, user_id, eval(user_id)())
+
     while True:
         message_input = input()
         if not command(message_input):
@@ -76,7 +92,6 @@ def send_message():
                 join_room()
             else:
                 Message.send(active_room, user_id, message_input)
-
 
 def listen_for_push(client):
     global push_active

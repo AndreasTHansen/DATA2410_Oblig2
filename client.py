@@ -7,6 +7,7 @@ from threading import Thread
 
 # Replace with input()
 if len(sys.argv) == 3:
+
     user_id = sys.argv[1]
     room = sys.argv[2]
 else:

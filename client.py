@@ -3,20 +3,22 @@ from connections import User, Room, Message
 import sys
 from socket import socket, SHUT_RDWR
 from threading import Thread
-import time
+from datetime import datetime
 
-
-# Replace with input()
-if len(sys.argv) == 3:
-
-    user_id = sys.argv[1]
-    room = sys.argv[2]
-else:
-    user_id = input("Please enter username")
 
 is_bot = False
-if user_id in ["JoeBot", "AnnaBot", "PeterBot"]:
-    is_bot = True
+
+if len(sys.argv) == 3:
+    if sys.argv[1] in ["JoeBot", "AnnaBot", "PeterBot"]:
+        is_bot = True
+        user_id = sys.argv[1]
+        room = sys.argv[2]
+    else:
+        print("This is not a registered bot, try again")
+        sys.exit()
+else:
+    user_id = input("Please enter username ")
+
 
 push_active = False
 active_room = None
@@ -28,6 +30,7 @@ def sign_in():
     global push_active
 
     response, code = User.get(user_id)
+    print(response)
 
     if is_bot:
 
@@ -66,6 +69,7 @@ def join_room():
 
     if code == 404:
         if is_bot:
+            print(f"Room does not exist, creating room: {room_id}")
             Room.add(room_id, user_id)
             join_this_room, code = Room.join(room_id, user_id)
 
@@ -91,7 +95,6 @@ def send_message():
 
     if is_bot:
         rooms, code = Room.get_all(user_id)
-        print(rooms)
         for x in rooms:
             users, code = Room.get_all_users(x, user_id)
             if user_id in users:
@@ -99,7 +102,9 @@ def send_message():
 
         for x in user_in_rooms:
             if active_room == x:
-                Message.send(active_room, user_id, eval(user_id)())
+                message = eval(user_id)()
+                Message.send(active_room, user_id, message)
+                print(f"{user_id}: {message} \t {datetime.now().strftime('%c')}")
             else:
                 Room.join(x, user_id)
                 active_room = x
@@ -113,6 +118,7 @@ def send_message():
                 join_room()
             else:
                 Message.send(active_room, user_id, message_input)
+                print(message_input)
 
 
 def listen_for_push(client):

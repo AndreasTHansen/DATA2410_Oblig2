@@ -60,7 +60,6 @@ def join_room():
 
     if is_bot:
         room_id = room
-
     else:
         room_id = input(f"Which room do you want to join? ")
 
@@ -91,6 +90,7 @@ def send_message():
 
     if is_bot:
         Message.send(active_room, user_id, eval(user_id)())
+        return
 
     while True:
         message_input = input()
@@ -100,6 +100,7 @@ def send_message():
                 join_room()
             else:
                 Message.send(active_room, user_id, message_input)
+
 
 def listen_for_push(client):
     global push_active

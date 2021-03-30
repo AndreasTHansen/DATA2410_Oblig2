@@ -4,7 +4,7 @@ import random
 
 
 def Joe():
-    responses = ["Hey how you doing?", "Hello guys!"]
+    responses = ["Hello, I am Joe", "What are you doing?"]
 
     return random.choice(responses)
 

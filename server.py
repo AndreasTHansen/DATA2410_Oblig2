@@ -21,10 +21,23 @@ def abort_if_exists(some_id: str, iterable: iter, abort_message: str):
         abort(409, message=abort_message)
 
 
+# Defining a global restriction; only registered members can perform requests other than registering:
+# Return 403: forbidden
+def permission_denied(requester: str, room: str = None):
+    if requester not in users:
+        abort(403, message=f"\"{requester}\" is not a registered user. Permission for request has been denied!")
+    if room:
+        if requester not in rooms[room]['users']:
+            abort(403, message=f"\"{requester}\" is not a member of {room}. Permission for request has been denied!")
+
+
 class Users(Resource):
     def get(self, user_id: str = None) -> (dict, int):
+        # checking global restriction:
+        requester = reqparse.RequestParser().add_argument('requester', type=str, required=True).parse_args()
+        permission_denied(requester['requester'])
         # Check if any user id has been provided
-        if user_id:
+        if user_id:  # route = "/api/user/<string:user_id>"
             if not user_id.strip():
                 return {'message': f"User id is required to fetch a user"}, 400  # Bad request
             # Check if specified user id exists
@@ -60,34 +73,45 @@ class Users(Resource):
         # Return the created user in json format
         return {user['username']: user}, 201  # created
 
-    def delete(self, user_id: str = None) -> (dict, int):
-        # A user id must be provided to delete a user
-        if not user_id:
-            # If no user id has been provided return a string to prompting the caller to provide user id
-            return {'message': "User id required to delete a user"}, 400  # bad request
+    def delete(self, user_id: str) -> (dict, int):
+        # checking global restriction:
+        requester = reqparse.RequestParser().add_argument('requester', type=str, required=True).parse_args()
+        permission_denied(requester['requester'])
 
-        if not user_id.strip():
-            return {'message': "User id required to delete a user"}, 400  # bad request
-
-        # Check if provided user id exists:
-        abort_if_not_exists(user_id, users, f"Cannot find user with user id {user_id}!")
+        # Adding security layer: Request to delete a user can only be performed by the user themselves:
+        if requester['requester'] != user_id:
+            return {'message': "Permission denied to deregister another user"}, 451
 
         # Remove and return the user id, None is returned as default value to avoid KeyError
         return users.pop(user_id, None), 200  # OK
 
     def patch(self, user_id: str) -> (dict, int):
-        abort_if_not_exists(user_id, users, f"Cannot find user with user id \"{user_id}\"!")
+        # checking global restriction:
+        # Gathering patched information:
         patched = reqparse.RequestParser() \
+            .add_argument('requester', type=str, required=True) \
             .add_argument('username', type=str) \
             .add_argument('push-notification', type=inputs.boolean) \
             .add_argument('rooms', type=list) \
             .add_argument('unread-messages', type=dict) \
             .parse_args()
 
+        # Remove the requester field and store it into a variable for validation:
+        requester = patched.pop('requester')
+        permission_denied(requester)
+
+        abort_if_not_exists(user_id, users, f"Cannot find user with user id \"{user_id}\"!")
+
+        # Adding a new security layer to not be able to update other user's info other than themselves
+        if requester != user_id:
+            return {'message': f"Cannot change another user's info"}, 451
+
+        # Update all the information provided:
         for key in patched:
             if patched[key] is not None:
                 users[user_id].update({key: patched[key]})
 
+        # Return user's new information
         return users[user_id], 200  # OK
 
 
@@ -99,34 +123,53 @@ class ChatRooms(Resource):
     # Gets room with room_id.
     # Returns either a key-value pair, or an array of key-value pairs.
     def get(self, room_id: str = None) -> (dict, int):
-        if room_id:  # Check if room id has been provided
+        # checking global restriction:
+        requester = reqparse.RequestParser().add_argument('requester', type=str, required=True).parse_args()
+        permission_denied(requester['requester'])
+
+        if room_id:  # route = "/api/room/<string:room_id>"
             # Check if room id exists:
             abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}!")
 
-            # Return this room in json format
-            return rooms[room_id], 200  # OK
+            # Return a room without the messages inside that room:
+            room_info = rooms[room_id]
+            room_info.pop('messages')
+
+            return room_info, 200  # OK
 
         # As there are potential for a lot of messages in each room we will only return a list of rooms together
         # With the users in these rooms
-        all_rooms = {k: v['users'] for (k, v) in rooms.items()}
+        all_rooms = {
+            k: {
+                'creator': v['creator'],
+                'users': v['users']
+            } for (k, v) in rooms.items()
+        }
         return all_rooms, 200  # OK
 
     # Adds room with room_id
     def post(self) -> (dict, int):
         # Retrieve data
-        room = reqparse.RequestParser().add_argument('name', type=str, required=True).parse_args()
+        room = reqparse.RequestParser() \
+            .add_argument('name', type=str, required=True) \
+            .add_argument('creator', type=str, required=True) \
+            .add_argument('users', type=list, default=[]) \
+            .add_argument('messages', type=list, default=[]) \
+            .parse_args()
+
+        # Checking global restriction:
+        permission_denied(room['creator'])
+
         # Abort if the room already exists
         abort_if_exists(room['name'], rooms, f"{room['name']} already exists!")  # 409
-        # Create a room based on the name given
-        new_room = {room['name']: {
-            'name': room['name'],
-            'users': [],
-            'messages': [],
-        }}
-        # Add this room to our dictionary
-        rooms.update(new_room)
+
+        # We will also by default add creator as a user of this room:
+        room['users'].append(room['creator'])
+
+        # Add this room to our dictionary with name as id
+        rooms.update({room['name']: room})
         # Return the room as json format
-        return new_room, 201  # Created
+        return room, 201  # Created
 
 
 api.add_resource(ChatRooms, "/api/rooms", "/api/room/<string:room_id>")
@@ -134,6 +177,10 @@ api.add_resource(ChatRooms, "/api/rooms", "/api/room/<string:room_id>")
 
 class RoomUsers(Resource):
     def get(self, room_id: str) -> (list, int):
+        # checking global restriction:
+        requester = reqparse.RequestParser().add_argument('requester', type=str, required=True).parse_args()
+        permission_denied(requester['requester'])
+
         # Check if room_id exists
         abort_if_not_exists(room_id, rooms, f"Unable to find the room with room id {room_id}!")
 
@@ -141,25 +188,24 @@ class RoomUsers(Resource):
         return rooms[room_id]['users'], 200
 
     def post(self, room_id: str) -> (list, int):
+        # checking global restriction:
+        requester = reqparse.RequestParser().add_argument('requester', type=str, required=True).parse_args()
+        permission_denied(requester['requester'])
         # Check if room_id exists
         abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}!")  # 404
 
-        # To join a room append a user to the list of users in that room:
-        # First check if the user is registered:
-        user = reqparse.RequestParser().add_argument('user', type=str, required=True).parse_args()
-        user = user['user']
-        abort_if_not_exists(user, users, f"Cannot find user with user id {user}!")
+        # Since we have checked that the requester is a registered user and we have also checked
+        # that the room exists we will then allow the requester to join the room:
+        user = requester['requester']
 
-        # Then check if the user is already in this room
-        abort_if_exists(user, rooms[room_id]['users'], f"{user} is already a member of {room_id}")  # 409
+        # If the user is not a member of the room we will append the user to the list of users
+        if user not in rooms[room_id]['users']:
+            rooms[room_id]['users'].append(user)
+            # We will also add the room to the list of rooms the user is a member of
+            users[user]['rooms'].append(room_id)
 
-        # Add user to users list in this room
-        rooms[room_id]['users'].append(user)
-        # Add room id to rooms list for this user
-        users[user]['rooms'].append(room_id)
-        users[user]['unread-messages'].update({room_id: 0})
-
-        return rooms[room_id]['users'], 200
+        # Return the list of users in this room:
+        return rooms[room_id]['users'], 200  # OK
 
 
 api.add_resource(RoomUsers, "/api/room/<string:room_id>/users")
@@ -167,21 +213,20 @@ api.add_resource(RoomUsers, "/api/room/<string:room_id>/users")
 
 class Messages(Resource):  # Take a look at this
     def get(self, room_id: str, user_id: str = None) -> (list, int):
+        # Check global restrictions:
+        requester = reqparse.RequestParser().add_argument('requester', type=str, required=True).parse_args()
+        permission_denied(requester['requester'], room=room_id)
+
         # Check if bot room_id
         abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}")
 
-        if not user_id:  # If no user id was provided
-            # Get the user that requests the message:
-            user = reqparse.RequestParser().add_argument('user', type=str, required=True).parse_args()
-            # Check if the requested user is in the room:
-            abort_if_not_exists(
-                user['user'], rooms[room_id]['users'],
-                f"Permission denied for {user} to get messages from {room_id}!"
-            )
+        if not user_id:  # route = /api/room/<string:room_id>/messages
+            user = requester['requester']
 
-            users[user['user']]['unread-messages'].update({room_id: 0})
+            # Set the requesters unread messages in that room to 0, crucial for push-notifications
+            users[user]['unread-messages'].update({room_id: 0})
 
-            # Return all messages from that room if the user is in the room
+            # Return all messages from requested the room
             return rooms[room_id]['messages'], 200  # Ok
 
         # If a user id was provided we must then first check if the user
@@ -189,22 +234,19 @@ class Messages(Resource):  # Take a look at this
         # Get a list of all messages from a room:
         messages_in_this_room = rooms[room_id]['messages']
 
-        # Filter through all the messages in this room and return all the messages this provided user_id
+        # Filter through all the messages in this room and return all the messages from provided user_id
         messages_from_user = filter(lambda message: message['user'] == user_id, messages_in_this_room)
         return list(messages_from_user), 200  # Ok
 
     def post(self, room_id: str, user_id: str) -> (dict, int):
-        # Check if room and user exists
+        # Check if room exists
         abort_if_not_exists(room_id, rooms, f"Cannot find room with room id \"{room_id}\"!")
-        abort_if_not_exists(user_id, users, f"Cannot find user with user id \"{user_id}\"!")
 
-        # Also check if the user is member of the room
-        abort_if_not_exists(
-            user_id,
-            rooms[room_id]['users'],
-            f"user \"{user_id}\" cannot send messages in room \"{room_id}\"..."
-        )
+        # Then check if user_id has permission to post messages in this room:
+        # Deny the post request if user is not a member of the room:
+        permission_denied(requester=user_id, room=room_id)
 
+        # Create a message json
         now = datetime.now()
         message = reqparse.RequestParser() \
             .add_argument('user', type=str, default=user_id) \
@@ -213,11 +255,15 @@ class Messages(Resource):  # Take a look at this
             .add_argument('message', type=str, required=True) \
             .parse_args()
 
+        # Add the message inside this room
         rooms[room_id]['messages'].append(message)
 
+        # Update unread messages of all users inside this room:
+        # Crucial for push-notifications
         for user in rooms[room_id]['users']:
             users[user]['unread-messages'][room_id] += 1
 
+        # Return the message
         return message, 200
 
 
@@ -252,7 +298,6 @@ if __name__ == "__main__":
         clients[user]['client'].shutdown(SHUT_RDWR)
         clients[user]['client'].close()
         clients.pop(user, None)
-
 
 
     while True:

@@ -5,9 +5,9 @@ URL = "http://127.0.0.1:5000/api"
 
 class User:
     @staticmethod
-    def get_all() -> (dict, int):
+    def get_all(requester: str) -> (dict, int):
         route = URL + '/users'
-        response = get(route)
+        response = get(route, {'requester': requester})
         return response.json(), response.status_code
 
     @staticmethod
@@ -17,68 +17,68 @@ class User:
         return response.json(), response.status_code
 
     @staticmethod
-    def get(user_id: str) -> (dict, int):
+    def get(user_id: str, requester: str) -> (dict, int):
         route = URL + f'/user/{user_id}'
-        response = get(route)
+        response = get(route, {'requester': requester})
         return response.json(), response.status_code
 
     @staticmethod
-    def toggle_push(user_id):
+    def toggle_push(user_id: str):
         route = URL + f'/user/{user_id}'
-        current_push_notification = get(route).json()['push-notification']
-        response = patch(route, {'push-notification': not current_push_notification})
+        user = get(route, {'requester': user_id}).json()
+        response = patch(route, {'requester': user_id, 'push-notification': not user['push-notification']})
         return response.json(), response.status_code
 
     @staticmethod
     def delete(user_id: str) -> (dict, int):
         route = URL + f'/user/{user_id}'
-        response = delete(route)
+        response = delete(route, data={'requester': user_id})
         return response.json(), response.status_code
 
 
 class Room:
     @staticmethod
-    def get_all() -> (dict, int):
+    def get_all(requester: str) -> (dict, int):
         route = URL + '/rooms'
-        response = get(route)
+        response = get(route, {'requester': requester})
         return response.json(), response.status_code
 
     @staticmethod
-    def add(room_id: str) -> (dict, int):
+    def add(room_id: str, creator: str) -> (dict, int):
         route = URL + f'/rooms'
-        response = post(route, {'name': room_id})
+        response = post(route, {'creator': creator, 'name': room_id})
         return response.json(), response.status_code
 
     @staticmethod
-    def get(room_id: str) -> (dict, int):
+    def get(room_id: str, requester: str) -> (dict, int):
         route = URL + f'/room/{room_id}'
-        response = get(route)
+        response = get(route, {'requester': requester})
         return response.json(), response.status_code
 
     @staticmethod
-    def get_all_users(room_id: str) -> (dict, int):
+    def get_all_users(room_id: str, requester: str) -> (dict, int):
         route = URL + f'/room/{room_id}/users'
-        response = get(route)
+        response = get(route, {'requester': requester})
         return response.json(), response.status_code
 
     @staticmethod
-    def join(room_id: str, user_id: str) -> (dict, int):
+    def join(room_id: str, requester: str) -> (dict, int):
         route = URL + f'/room/{room_id}/users'
-        response = post(route, {'user': user_id})
+        response = post(route, {'requester': requester})
         return response.json(), response.status_code
 
 
 class Message:
     @staticmethod
-    def get_all_from_room(room_id: str, user_id: str) -> (dict, int):
+    def get_all_from_room(room_id: str, requester: str) -> (dict, int):
         route = URL + f'/room/{room_id}/messages'
-        response = get(route, {'user': user_id})
+        response = get(route, {'requester': requester})
         return response.json(), response.status_code
 
     @staticmethod
-    def get_all_from_user(room_id: str, user_id: str) -> (dict, int):
+    def get_all_from_user(room_id: str, user_id: str, requester: str) -> (dict, int):
         route = URL + f'/room/{room_id}/{user_id}/messages'
-        response = get(route)
+        response = get(route, {'requester': requester})
         return response.json(), response.status_code
 
     @staticmethod

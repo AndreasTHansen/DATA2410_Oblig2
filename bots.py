@@ -1,9 +1,9 @@
-from client import *
+
 import random
 # Morsomme bots
 
 
-def Joe(msg):
+def Joe():
     responses = ["Hey how you doing?", "Hello guys!"]
 
     return random.choice(responses)

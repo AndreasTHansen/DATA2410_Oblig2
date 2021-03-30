@@ -5,6 +5,12 @@ from threading import Thread
 
 # Replace with input()
 user_id = sys.argv[1]
+room = sys.argv[2]
+
+is_bot = False
+if user_id in ["Joe", "Anna", "Peter"]:
+    is_bot = True
+
 push_active = False
 active_room = None
 
@@ -15,15 +21,24 @@ def sign_in():
     global push_active
 
     response, code = User.get(user_id)
-    if not response['push-notification']:
-        push_active = input(f"Do you want to turn on push notification? [y/n] ").strip() == 'y'
-        if push_active:
-            toggle_push_notification()
 
-    if code == 404:
-        print(response['message'])
-        print(f"Registering {user_id} as a new user!")
-        User.add(user_id, push_active)
+    if is_bot:
+
+        # We only need to add the user, if it is a bot
+        # Either user does not exist, or it already exists
+        while code == 404 or code == 409:
+            User.add(user_id)
+
+    else:
+        if not response['push-notification']:
+            push_active = input(f"Do you want to turn on push notification? [y/n] ").strip() == 'y'
+            if push_active:
+                toggle_push_notification()
+
+        if code == 404:
+            print(response['message'])
+            print(f"Registering {user_id} as a new user!")
+            User.add(user_id, push_active)
 
 
 Room.add('General', user_id)

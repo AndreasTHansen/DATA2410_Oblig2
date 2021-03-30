@@ -10,6 +10,8 @@ api = Api(app)
 users = {}
 rooms = {}
 
+clients = {}
+
 
 def abort_if_not_exists(some_id: str, iterable: iter, abort_message: str):
     if some_id not in iterable:
@@ -278,8 +280,12 @@ api.add_resource(
     "/api/room/<string:room_id>/<string:user_id>/messages"
 )
 
+
 if __name__ == "__main__":
     app.run(debug=True)
+    while True:
+        for room in rooms:
+            print(room['messages'].value)
 
     server = socket()
     server.bind(("127,0,0,1", 5000))

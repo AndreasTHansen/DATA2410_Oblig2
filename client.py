@@ -1,12 +1,16 @@
+
 from connections import User, Room, Message
 import sys
 from socket import socket, SHUT_RDWR
 from threading import Thread
-from bots import *
+
 
 # Replace with input()
-user_id = sys.argv[1]
-room = sys.argv[2]
+if len(sys.argv) == 3:
+    user_id = sys.argv[1]
+    room = sys.argv[2]
+else:
+    user_id = input("Please enter username")
 
 is_bot = False
 if user_id in ["Joe", "Anna", "Peter"]:

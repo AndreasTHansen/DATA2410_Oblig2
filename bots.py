@@ -8,18 +8,13 @@ def JoeBot():
 
     return random.choice(responses)
 
-def Peter():
+def PeterBot():
     responses = ["Wow, its dead in here, lets turn it uuup!", "Welcome, Welcome! Anyone want to do anything fun?",
                  "Hello! I don't really have much sparetime bit here I am!"]
 
     return random.choice(responses)
 
-def Anna(room_id):
-    #Logge inn
+def AnnaBot():
+    responses = ["You woke me up! Whats your reasoning", "yaaaawn", "Welcome I guess"]
 
-    sign_in()
-    join_room()
-
-    #Velge rom
-
-    #Skrive meldinger
+    return random.choice(responses)

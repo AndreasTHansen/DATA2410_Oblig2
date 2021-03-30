@@ -14,7 +14,7 @@ else:
     user_id = input("Please enter username")
 
 is_bot = False
-if user_id in ["JoeBot", "Anna", "Peter"]:
+if user_id in ["JoeBot", "AnnaBot", "PeterBot"]:
     is_bot = True
 
 push_active = False

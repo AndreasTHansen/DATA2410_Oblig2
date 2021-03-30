@@ -3,6 +3,7 @@ from connections import User, Room, Message
 import sys
 from socket import socket, SHUT_RDWR
 from threading import Thread
+import time
 
 
 # Replace with input()
@@ -57,11 +58,11 @@ def join_room():
     global active_room
 
     available_rooms, code = Room.get_all(user_id)
-    print(f"Available rooms to join: \n {list(available_rooms)}")
 
     if is_bot:
         room_id = room
     else:
+        print(f"Available rooms to join: \n {list(available_rooms)}")
         room_id = input(f"Which room do you want to join? ")
 
     join_this_room, code = Room.join(room_id, user_id)
@@ -89,11 +90,23 @@ def send_message():
     global user_id
     global active_room
 
+    user_in_rooms = []
+
     if is_bot:
-        message = eval(user_id)()
-        Message.send(active_room, user_id, message)
-        print(f"Posted message: " + message + " to room " + room)
-        return
+        rooms, code = Room.get_all(user_id)
+        print(rooms)
+        for x in rooms:
+            users, code = Room.get_all_users(x, user_id)
+            if user_id in users:
+                user_in_rooms.append(x)
+
+        for x in user_in_rooms:
+            if active_room == x:
+                Message.send(active_room, user_id, eval(user_id)())
+            else:
+                Room.join(x, user_id)
+                active_room = x
+
 
     while True:
         message_input = input()

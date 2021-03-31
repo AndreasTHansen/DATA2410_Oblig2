@@ -297,10 +297,12 @@ def handle_push_info(client):
     unread_messages = client.recv(1024).decode('utf8')
     in_room = client.recv(1024).decode('utf8')
     try:
-        clients[user].send(in_room.encode('utf8'))
-        clients[user].send(unread_messages.encode('utf8'))
+        user_client = clients.get(user, None)
+        if user_client is not None:
+            user_client.send(in_room.encode('utf8'))
+            user_client.send(unread_messages.encode('utf8'))
     except ConnectionResetError:
-        clients.pop(user)
+        clients.pop(user, None)
 
 
 # Creating a socket just for listening:

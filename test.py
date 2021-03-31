@@ -185,11 +185,8 @@ def live_messages():
     while True:
         # Server will first send us a room_id
         room_id = client.recv(1024).decode('utf8')
-        sleep(.1)
         unread = client.recv(1024).decode('utf8')
-        sleep(.1)
-        push_on = int(client.recv(1024).decode('utf8'))
-        sleep(.1)
+        push_on = client.recv(1024).decode('utf8')
         if active_room == room_id:
             refresh_messages_in_this_room()
         elif push_on:

@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from json import load
 from connections import User, Room, Message
-from socket import socket
+from socket import socket, AF_INET, SOCK_STREAM
 from sys import exit, platform
 from os import system, abort
 from time import sleep
@@ -36,6 +36,9 @@ push_enabled = arguments.push
 user_is_bot = arguments.bot
 bot_responses = {}
 
+host = "192.168.56.1"
+port = 5000
+
 # We shall at this point check if the user has is a bot and handle it accordingly:
 if user_is_bot:
     # First convert first letter to a capital letter:
@@ -53,6 +56,8 @@ if user_is_bot:
 
 # If the user is a bot we have to decide how the bot should respond to the message:
 def bot_respond_to_message(user: str, message: str):
+    global active_room
+    global active_user
     # Check first if the user is itself do nothing if it is:
     if user == active_user:
         return
@@ -64,8 +69,9 @@ def bot_respond_to_message(user: str, message: str):
     for word in word_list:
         # Check each word and if it matches one of the keyword from the bot then respond accordingly
         if word in bot_responses:
-            the_response = choice(bot_responses)
+            the_response = choice(bot_responses[word])
             Message.send(active_room, active_user, the_response)
+            refresh_messages_in_this_room()
 
 
 # Attempt to add the user
@@ -76,8 +82,8 @@ if code == 201:
     print(f"Registering user with username \"{active_user}\"")
 # Connect the user to the push notification service which has two purposes:
 # Providing push notification if the user has it enabled and provide the user with live message updates:
-client = socket()
-client.connect(('127.0.0.1', 5005))
+client = socket(AF_INET, SOCK_STREAM)
+client.connect((host, port+5))
 
 # Provide the username that has connected to the push notification server:
 client.send(active_user.encode('utf8'))
@@ -162,12 +168,11 @@ def refresh_messages_in_this_room():
     print(30 * '-')
     for message in all_messages:
         print(f"{message['user']}: {message['message']} \t\t {message['time']}")
-    if user_is_bot and len(all_messages) > 0:
+    if user_is_bot:
         # Grab the last message:
         with_message = all_messages[-1]['message']
         from_user = all_messages[-1]['user']
         bot_respond_to_message(from_user, with_message)
-    print(30 * '-')
 
 
 # After we have connected the chat as the user we need to join the room provided in the terminal
@@ -179,22 +184,44 @@ join(arguments.room)
 # For this we start a thread:
 def live_messages():
     while True:
-        # Server will first send us a room_id
-        room_id = client.recv(1024).decode('utf8')
-        unread = client.recv(1024).decode('utf8')
-        if active_room == room_id:
-            refresh_messages_in_this_room()
-        elif push_enabled:
-            print(f"You have {unread} unread messages in room \"{room_id}\"")
-        print(30 * '-')
+        try:
+            # Server will first send us a room_id
+            room_id = client.recv(1024).decode('utf8')
+            unread = client.recv(1024).decode('utf8')
+        except ConnectionResetError:
+            print(f"Lost connection to the server...")
+            exit_program()
+            break
+
+        try:
+            unread = int(unread)
+            if active_room == room_id or user_is_bot:
+                refresh_messages_in_this_room()
+            elif push_enabled:
+                print(f"You have {unread} unread messages in room \"{room_id}\"")
+        except ValueError:
+            try:
+                temp = room_id
+                room_id = unread
+                unread = int(temp)
+
+                if active_room == room_id or user_is_bot:
+                    refresh_messages_in_this_room()
+                elif push_enabled:
+                    print(f"You have {unread} unread messages in room \"{room_id}\"")
+            except ValueError:
+                refresh_messages_in_this_room()
 
 
 # We must also be able to send messages:
 def send_messages():
+    global active_room
+    global active_user
+
     refresh_messages_in_this_room()
     while True:
-        sleep(0.1)
         print(30 * '-')
+        sleep(.1)
         message = input('').strip()
         # Only non-bot users can use this thread to send messages:
         if not commands(message) and message and not user_is_bot:
@@ -226,19 +253,19 @@ def commands(cmd: str):
     return False
 
 
-def exit_program(void):
+def exit_program(void=None):
     print("Exiting program!")
     abort()
 
 
-def toggle_push_notification(void):
+def toggle_push_notification(void=None):
     global push_enabled
     push_enabled = not push_enabled
     User.toggle_push(active_user)
 
 
 # Start a thread for live messages:
-live_message_thread = Thread(target=live_messages)
+live_message_thread = Thread(target=live_messages, daemon=True)
 live_message_thread.start()
 
 # Start a thread for sending messages:

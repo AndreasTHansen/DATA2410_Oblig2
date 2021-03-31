@@ -1,6 +1,6 @@
 from requests import get, post, patch, delete
 
-URL = "http://127.0.0.1:5000/api"
+URL = "http://192.168.56.1:5000/api"
 
 
 class User:

@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_restful import Api, Resource, reqparse, abort, inputs
 from datetime import datetime
-from socket import socket, SOL_SOCKET, SO_REUSEADDR
+from socket import socket, SOL_SOCKET, SO_REUSEADDR, AF_INET, SOCK_STREAM
 from threading import Thread
 from time import sleep
 
@@ -270,7 +270,6 @@ class Messages(Resource):  # Take a look at this
         # Crucial for push-notifications
         for user in rooms[room_id]['users']:
             users[user]['unread-messages'][room_id] += 1
-            sleep(.1)
             send_push_info(user, room_id)
 
         # Return the message
@@ -285,9 +284,10 @@ api.add_resource(
 
 
 def send_push_info(user_id, room_id):
-    push_notifier = socket()
-    push_notifier.connect(("127.0.0.1", 5005))
+    push_notifier = socket(AF_INET, SOCK_STREAM)
+    push_notifier.connect(("192.168.56.1", 5005))
     push_notifier.send('IMA-Push-Notifier'.encode('utf8'))
+    sleep(.01)
     push_notifier.send(user_id.encode('utf8'))
     push_notifier.send(str(users[user_id]['unread-messages'][room_id]).encode('utf8'))
     push_notifier.send(room_id.encode('utf8'))
@@ -297,16 +297,18 @@ def handle_push_info(client):
     user = client.recv(1024).decode('utf8')
     unread_messages = client.recv(1024).decode('utf8')
     in_room = client.recv(1024).decode('utf8')
-
-    clients[user].send(in_room.encode('utf8'))
-    clients[user].send(unread_messages.encode('utf8'))
+    try:
+        clients[user].send(in_room.encode('utf8'))
+        clients[user].send(unread_messages.encode('utf8'))
+    except ConnectionResetError:
+        clients.pop(user)
 
 
 # Creating a socket just for listening:
-def listening_socket():
-    service = socket()
+def listening_socket(host: str, port: int):
+    service = socket(AF_INET, SOCK_STREAM)
     service.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    service.bind(("127.0.0.1", 5005))
+    service.bind((host, port))
     service.listen()
     while True:
         client, addr = service.accept()
@@ -320,5 +322,9 @@ def listening_socket():
 
 
 if __name__ == "__main__":
-    Thread(target=listening_socket).start()
-    app.run(debug=True)
+    host = "192.168.56.1"
+    port = 5000
+
+    listening_thread = Thread(target=listening_socket, args=(host, port+5))
+    listening_thread.start()
+    app.run(host=host, port=port, debug=True)

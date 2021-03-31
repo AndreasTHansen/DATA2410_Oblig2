@@ -2,15 +2,16 @@ from connections import User, Room, Message
 from json import dumps
 from socket import socket
 from sys import platform, argv, exit
-from os import system
+from os import system, abort
 from threading import Thread
+from time import sleep
 
 """
 As the program starts we want to fetch the user. First we want to try to add the user. If we get an error code we 
 can then assume that the user is already registered. In that case we will just get the user and store the user_id
 """
 active_user = argv[1]
-
+client_is_alive = True
 # First, we add the requested user:
 response, code = User.add(active_user)
 
@@ -58,40 +59,66 @@ def print_message_history():
 
 
 def send_messages():
-    while True:
-        message = input()
-        if not commands(message):
+    global client_is_alive
+    print_message_history()
+    while client_is_alive:
+        sleep(0.1)
+        print(30 * '-')
+        message = input('').strip()
+        if not commands(message) and message:
             Message.send(active_room, active_user, message)
+        else:
+            clear_console()
             print_message_history()
 
 
 # We will also listen for any push_notifications:
 def push_notifications():
-    while True:
+    global client_is_alive
+    while client_is_alive:
         # Server will first send us a room_id
-        room_id = client.recv(1024).decode('utf8')
-        unread = client.recv(1024).decode('utf8')
-        if active_room == room_id:
-            print_message_history()
-        else:
-            print(f"You have {unread} messages in room \"{room_id}\"")
+        try:
+            room_id = client.recv(1024).decode('utf8')
+            unread = client.recv(1024).decode('utf8')
+            push_on = int(client.recv(1024).decode('utf8'))
+            if active_room == room_id:
+                print_message_history()
+            elif push_on:
+                print(f"You have {unread} messages in room \"{room_id}\"")
+        except ConnectionResetError:
+            clear_console()
+            print("Lost contact with the server!")
+            exit_program()
+            break
 
 
-def join():
+def select_new_active_room():
     global active_room
     all_rooms, code = Room.get_all(active_user)
     print(dumps(all_rooms, indent=2))
-    active_room = input(f"Which room do you want to join? ")
+    active_room = input("Which room do you want to join? ")
     r, c = Room.join(active_room, active_user)
     if c == 404:
         Room.add(active_room, active_user)
     print_message_history()
 
 
+def exit_program():
+    global client_is_alive
+    client_is_alive = False
+    print("Exiting program!")
+    abort()
+
+
+def toggle_push_notification():
+    User.toggle_push(active_user)
+
+
 def commands(cmd: str):
     cmds = {
-        '/join': join,
-        '/exit': exit
+        '/join': select_new_active_room,
+        '/exit': exit_program,
+        '/toggle_push': toggle_push_notification
     }
     if cmd in cmds:
         cmds[cmd]()
@@ -99,5 +126,7 @@ def commands(cmd: str):
     return False
 
 
-Thread(target=push_notifications, daemon=True).start()
-Thread(target=send_messages).start()
+push_thread = Thread(target=push_notifications, daemon=True)
+push_thread.start()
+send_message_thread = Thread(target=send_messages)
+send_message_thread.start()

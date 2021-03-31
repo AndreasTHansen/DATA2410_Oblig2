@@ -11,7 +11,7 @@ class User:
         return response.json(), response.status_code
 
     @staticmethod
-    def add(user_id: str, push_notification: bool = True) -> (dict, int):
+    def add(user_id: str, push_notification: bool = False) -> (dict, int):
         route = URL + f'/users'
         response = post(route, {'username': user_id, 'push-notification': push_notification})
         return response.json(), response.status_code
@@ -72,10 +72,12 @@ class Room:
 
 class Message:
     @staticmethod
-    def get_all_from_room(room_id: str, requester: str) -> (dict, int):
-        route = URL + f'/room/{room_id}/messages'
-        response = get(route, {'requester': requester})
-        return response.json(), response.status_code
+    def get_all_from_room(room_id: str = None, requester: str = None) -> (dict, int):
+        if room_id and requester:
+            route = URL + f'/room/{room_id}/messages'
+            response = get(route, {'requester': requester})
+            return response.json(), response.status_code
+        raise ValueError(f"Must specify room and requester")
 
     @staticmethod
     def get_all_from_user(room_id: str, user_id: str, requester: str = None) -> (dict, int):

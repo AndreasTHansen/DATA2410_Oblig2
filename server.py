@@ -270,9 +270,8 @@ class Messages(Resource):  # Take a look at this
         # Crucial for push-notifications
         for user in rooms[room_id]['users']:
             users[user]['unread-messages'][room_id] += 1
-            send_push_info(user, room_id, 1) \
-                if users[user]['push-notification'] \
-                else send_push_info(user, room_id, 0)
+            sleep(.1)
+            send_push_info(user, room_id)
 
         # Return the message
         return message, 200
@@ -285,29 +284,22 @@ api.add_resource(
 )
 
 
-def send_push_info(user_id, room_id, push_on):
+def send_push_info(user_id, room_id):
     push_notifier = socket()
     push_notifier.connect(("127.0.0.1", 5005))
     push_notifier.send('IMA-Push-Notifier'.encode('utf8'))
-    sleep(.1)
     push_notifier.send(user_id.encode('utf8'))
-    sleep(.1)
     push_notifier.send(str(users[user_id]['unread-messages'][room_id]).encode('utf8'))
-    sleep(.1)
     push_notifier.send(room_id.encode('utf8'))
-    sleep(.1)
-    push_notifier.send(str(push_on).encode('utf8'))
 
 
 def handle_push_info(client):
     user = client.recv(1024).decode('utf8')
     unread_messages = client.recv(1024).decode('utf8')
     in_room = client.recv(1024).decode('utf8')
-    push_on = client.recv(1024).decode('utf8')
 
     clients[user].send(in_room.encode('utf8'))
     clients[user].send(unread_messages.encode('utf8'))
-    clients[user].send(push_on.encode('utf8'))
 
 
 # Creating a socket just for listening:
@@ -324,11 +316,7 @@ def listening_socket():
         if username.__contains__('IMA-Push-Notifier'):
             handle_push_info(client)
         else:
-            if username not in clients:
-                client.send('1'.encode('utf8'))
-                clients.update({username: client})
-            else:
-                client.send('0'.encode('utf8'))
+            clients.update({username: client})
 
 
 if __name__ == "__main__":

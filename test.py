@@ -82,11 +82,6 @@ client.connect(('127.0.0.1', 5005))
 # Provide the username that has connected to the push notification server:
 client.send(active_user.encode('utf8'))
 
-# Then wait for the server to send a signal back if the client is already connected or not 0 or 1:
-ok = int(client.recv(1024).decode('utf8'))  # Required to convert to int so we can use this in an if statement:
-if not ok:
-    exit(f"\"{active_user}\" is already online... Exiting program!")
-
 # Tell the user that they have successfully connected:
 print(f"Connected to the chat as \"{active_user}\"")
 
@@ -172,6 +167,7 @@ def refresh_messages_in_this_room():
         with_message = all_messages[-1]['message']
         from_user = all_messages[-1]['user']
         bot_respond_to_message(from_user, with_message)
+    print(30 * '-')
 
 
 # After we have connected the chat as the user we need to join the room provided in the terminal
@@ -186,11 +182,11 @@ def live_messages():
         # Server will first send us a room_id
         room_id = client.recv(1024).decode('utf8')
         unread = client.recv(1024).decode('utf8')
-        push_on = client.recv(1024).decode('utf8')
         if active_room == room_id:
             refresh_messages_in_this_room()
-        elif push_on:
+        elif push_enabled:
             print(f"You have {unread} unread messages in room \"{room_id}\"")
+        print(30 * '-')
 
 
 # We must also be able to send messages:
@@ -236,6 +232,8 @@ def exit_program(void):
 
 
 def toggle_push_notification(void):
+    global push_enabled
+    push_enabled = not push_enabled
     User.toggle_push(active_user)
 
 

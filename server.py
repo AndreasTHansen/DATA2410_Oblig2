@@ -135,9 +135,8 @@ class ChatRooms(Resource):
             abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}!")
 
             # Return a room without the messages inside that room:
-            room_info = rooms[room_id]
-            room_info.pop('messages')
-
+            room_info = rooms[room_id].copy()
+            room_info.pop('messages', None)
             return room_info, 200  # OK
 
         # As there are potential for a lot of messages in each room we will only return a list of rooms together
@@ -285,7 +284,7 @@ api.add_resource(
 
 def send_push_info(user_id, room_id):
     push_notifier = socket(AF_INET, SOCK_STREAM)
-    push_notifier.connect(("192.168.56.1", 5005))
+    push_notifier.connect(("127.0.0.1", 5005))
     push_notifier.send('IMA-Push-Notifier'.encode('utf8'))
     sleep(.01)
     push_notifier.send(user_id.encode('utf8'))
@@ -305,10 +304,10 @@ def handle_push_info(client):
 
 
 # Creating a socket just for listening:
-def listening_socket(host: str, port: int):
+def listening_socket():
     service = socket(AF_INET, SOCK_STREAM)
     service.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    service.bind((host, port))
+    service.bind(('127.0.0.1', 5005))
     service.listen()
     while True:
         client, addr = service.accept()
@@ -322,9 +321,6 @@ def listening_socket(host: str, port: int):
 
 
 if __name__ == "__main__":
-    host = "192.168.56.1"
-    port = 5000
-
-    listening_thread = Thread(target=listening_socket, args=(host, port+5))
+    listening_thread = Thread(target=listening_socket)
     listening_thread.start()
-    app.run(host=host, port=port, debug=True)
+    app.run(debug=True)

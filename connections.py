@@ -1,6 +1,6 @@
 from requests import get, post, patch, delete
 
-URL = "http://192.168.56.1:5000/api"
+URL = "http://127.0.0.1:5000/api"
 
 
 class User:
@@ -52,7 +52,7 @@ class Room:
         return response.json(), response.status_code
 
     @staticmethod
-    def get(room_id: str, requester: str) -> (dict, int):
+    def get(room_id, requester: str) -> (dict, int):
         route = URL + f'/room/{room_id}'
         response = get(route, {'requester': requester})
         return response.json(), response.status_code

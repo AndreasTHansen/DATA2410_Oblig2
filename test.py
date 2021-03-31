@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from json import load
+from json import load, dumps
 from connections import User, Room, Message
 from socket import socket, AF_INET, SOCK_STREAM
 from sys import exit, platform
@@ -35,9 +35,6 @@ active_room = None
 push_enabled = arguments.push
 user_is_bot = arguments.bot
 bot_responses = {}
-
-host = "192.168.56.1"
-port = 5000
 
 # We shall at this point check if the user has is a bot and handle it accordingly:
 if user_is_bot:
@@ -83,7 +80,7 @@ if code == 201:
 # Connect the user to the push notification service which has two purposes:
 # Providing push notification if the user has it enabled and provide the user with live message updates:
 client = socket(AF_INET, SOCK_STREAM)
-client.connect((host, port+5))
+client.connect(('127.0.0.1', 5005))
 
 # Provide the username that has connected to the push notification server:
 client.send(active_user.encode('utf8'))
@@ -173,6 +170,7 @@ def refresh_messages_in_this_room():
         with_message = all_messages[-1]['message']
         from_user = all_messages[-1]['user']
         bot_respond_to_message(from_user, with_message)
+    print(30 * '-')
 
 
 # After we have connected the chat as the user we need to join the room provided in the terminal
@@ -220,23 +218,38 @@ def send_messages():
 
     refresh_messages_in_this_room()
     while True:
-        print(30 * '-')
-        sleep(.1)
         message = input('').strip()
         # Only non-bot users can use this thread to send messages:
-        if not commands(message) and message and not user_is_bot:
+        if not commands(message) and not user_is_bot and message:
             Message.send(active_room, active_user, message)
+
+
+def room_info(rooms: list):
+    if len(rooms) == 0:
+        rooms = [active_room]
+    for room in rooms:
+        r, c = Room.get(room, active_user)
+        if c == 404:
+            print(f"\nRoom with room name \"{active_room}\" does not exists...\n")
         else:
-            clear_console()
-            refresh_messages_in_this_room()
+            print(f"\n{dumps(r, indent=2)}\n")
 
 
 # Define commands so we can navigate and interact with the program:
 def commands(cmd: str):
     cmds = {
+        '/help': None,
         '/join': join,
         '/exit': exit_program,
-        '/toggle_push': toggle_push_notification
+        '/toggle_push': toggle_push_notification,
+        '/room_info': room_info
+    }
+
+    help_list = {
+        '/join': "/join [room...] to join another room",
+        '/exit': "/exit to exit the program",
+        '/toggle_push': "/toggle_push to turn on or off push-notification",
+        '/room_info': "/room_info [room...] to display information about current active room"
     }
 
     # Parse the incoming string:
@@ -248,7 +261,10 @@ def commands(cmd: str):
     cmd = word_list.pop(0)
 
     if cmd in cmds:
-        cmds[cmd](word_list)
+        if cmd == '/help':
+            print(dumps(help_list, indent=1))
+        else:
+            cmds[cmd](word_list)
         return True
     return False
 
@@ -261,6 +277,7 @@ def exit_program(void=None):
 def toggle_push_notification(void=None):
     global push_enabled
     push_enabled = not push_enabled
+    print(f"Push notifications has now been {'enabled' if push_enabled else 'disabled'}")
     User.toggle_push(active_user)
 
 

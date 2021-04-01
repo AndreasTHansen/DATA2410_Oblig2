@@ -1,5 +1,6 @@
-from argparse import ArgumentParser
-from json import load, dumps
+import argparse
+import json
+import pickle
 from connections import User, Room, Message
 from socket import socket, AF_INET, SOCK_STREAM
 from sys import exit, platform
@@ -15,10 +16,10 @@ The argparse module provides -h and --help by defaults and provide the user of t
 explanation for the usage of the program. Furthermore it also provides us an easier way to handle the arguments
 passed in by the user than using the sys module.
 """
-parser = ArgumentParser(description="A client that connects to a REST API implemented with Flask"
-                                    "for chatting with other users, or bots if you are very lonely."
-                                    "A solution for the 2nd obligatory assignment in DATA2410 taught at "
-                                    "OsloMet during spring 2021")
+parser = argparse.ArgumentParser(description="A client that connects to a REST API implemented with Flask"
+                                             "for chatting with other users, or bots if you are very lonely."
+                                             "A solution for the 2nd obligatory assignment in DATA2410 taught at "
+                                             "OsloMet during spring 2021")
 parser.add_argument('username', type=str,
                     help='Desired username to connect as (Connected as a user by default, i.e. not as a bot)')
 parser.add_argument('-r', '--room', type=str, metavar='', nargs='+',
@@ -42,7 +43,7 @@ if user_is_bot:
     active_user = active_user.capitalize()
     # Then check if the bot is one of the bots we have implemented:
     f = open('bots.json')
-    bots = load(f)
+    bots = json.load(f)
     if active_user not in bots:
         exit(f"Unable to summon the bot named \"{active_user}\"\n"
              f"The only bots available are:\n{list(bots.keys())}")
@@ -72,7 +73,7 @@ def bot_respond_to_message(user: str, message: str):
 
 
 # Attempt to add the user
-response, code = User.add(active_user, push_enabled)
+response, code = User.add(active_user)
 
 # If the user does not exists we will get code == 201 i.e. we are registering them
 if code == 201:
@@ -182,33 +183,21 @@ join(arguments.room)
 # For this we start a thread:
 def live_messages():
     while True:
-        try:
-            # Server will first send us a room_id
-            room_id = client.recv(1024).decode('utf8')
-            unread = client.recv(1024).decode('utf8')
-        except ConnectionResetError:
-            print(f"Lost connection to the server...")
-            exit_program()
-            break
+        room = client.recv(1024).decode('utf8')  # Receive the room from socket
+        if active_room == room:  # First check if the room has happened in the active room
+            refresh_messages_in_this_room()
+        elif push_enabled:  # Then check if push has been enabled
+            user_info, c = User.get(active_user)  # Get information about active user:
+            unread_messages = user_info.get('unread-messages', None)
+            if unread_messages is not None:
+                number_of_unread = unread_messages.get(room, None)
+                if number_of_unread is not None:
+                    print(f"You have {number_of_unread} unread messages in {room}")
+                else:
+                    print(f"New activity in {room}")
+            else:
+                print(f"New activity in {room}")
 
-        try:
-            unread = int(unread)
-            if active_room == room_id or user_is_bot:
-                refresh_messages_in_this_room()
-            elif push_enabled:
-                print(f"You have {unread} unread messages in room \"{room_id}\"")
-        except ValueError:
-            try:
-                temp = room_id
-                room_id = unread
-                unread = int(temp)
-
-                if active_room == room_id or user_is_bot:
-                    refresh_messages_in_this_room()
-                elif push_enabled:
-                    print(f"You have {unread} unread messages in room \"{room_id}\"")
-            except ValueError:
-                refresh_messages_in_this_room()
 
 
 # We must also be able to send messages:
@@ -221,7 +210,10 @@ def send_messages():
         message = input('').strip()
         # Only non-bot users can use this thread to send messages:
         if not commands(message) and not user_is_bot and message:
-            Message.send(active_room, active_user, message)
+            Message.send(active_room, active_user, message)  # Send the message via API
+            room_users, c = Room.get_all_users(active_room, active_user)  # GET users in this room from API
+            data = pickle.dumps((active_room, room_users))  # Convert tuple to bytes
+            client.send(data)  # Send data through socket
 
 
 def room_info(rooms: list):
@@ -232,7 +224,7 @@ def room_info(rooms: list):
         if c == 404:
             print(f"\nRoom with room name \"{active_room}\" does not exists...\n")
         else:
-            print(f"\n{dumps(r, indent=2)}\n")
+            print(f"\n{json.dumps(r, indent=2)}\n")
 
 
 # Define commands so we can navigate and interact with the program:
@@ -262,7 +254,7 @@ def commands(cmd: str):
 
     if cmd in cmds:
         if cmd == '/help':
-            print(dumps(help_list, indent=1))
+            print(json.dumps(help_list, indent=1))
         else:
             cmds[cmd](word_list)
         return True

@@ -4,6 +4,7 @@ from datetime import datetime
 from socket import socket, SOL_SOCKET, SO_REUSEADDR, AF_INET, SOCK_STREAM
 from threading import Thread
 from time import sleep
+import pickle
 
 app = Flask(__name__)
 api = Api(app)
@@ -46,8 +47,13 @@ class Users(Resource):
             # Check if specified user id exists
             abort_if_not_exists(user_id, users, f"Cannot find user with user id \"{user_id}\"")
 
+            user_info = users[user_id].copy()
+
+            if user_id != requester:
+                user_info.pop('unread-messages', None)
+
             # Return json format of user
-            return users[user_id], 200  # code 200 = OK
+            return user_info, 200  # code 200 = OK
 
         # If no user id has been provided return the whole list as json format
         return users, 200  # code 200 = OK
@@ -56,7 +62,6 @@ class Users(Resource):
         # Collect necessary data to create a user {'username': user_id}
         user = reqparse.RequestParser() \
             .add_argument('username', type=str, required=True) \
-            .add_argument('push-notification', type=inputs.boolean, required=True) \
             .add_argument('rooms', type=list, default=[]) \
             .add_argument('unread-messages', type=dict, default={}) \
             .parse_args(strict=True)
@@ -94,7 +99,6 @@ class Users(Resource):
         patched = reqparse.RequestParser() \
             .add_argument('requester', type=str, required=True) \
             .add_argument('username', type=str) \
-            .add_argument('push-notification', type=inputs.boolean) \
             .add_argument('rooms', type=list) \
             .add_argument('unread-messages', type=dict) \
             .parse_args()
@@ -269,7 +273,6 @@ class Messages(Resource):  # Take a look at this
         # Crucial for push-notifications
         for user in rooms[room_id]['users']:
             users[user]['unread-messages'][room_id] += 1
-            send_push_info(user, room_id)
 
         # Return the message
         return message, 200
@@ -282,27 +285,13 @@ api.add_resource(
 )
 
 
-def send_push_info(user_id, room_id):
-    push_notifier = socket(AF_INET, SOCK_STREAM)
-    push_notifier.connect(("127.0.0.1", 5005))
-    push_notifier.send('IMA-Push-Notifier'.encode('utf8'))
-    sleep(.01)
-    push_notifier.send(user_id.encode('utf8'))
-    push_notifier.send(str(users[user_id]['unread-messages'][room_id]).encode('utf8'))
-    push_notifier.send(room_id.encode('utf8'))
-
-
-def handle_push_info(client):
-    user = client.recv(1024).decode('utf8')
-    unread_messages = client.recv(1024).decode('utf8')
-    in_room = client.recv(1024).decode('utf8')
-    try:
-        user_client = clients.get(user, None)
-        if user_client is not None:
-            user_client.send(in_room.encode('utf8'))
-            user_client.send(unread_messages.encode('utf8'))
-    except ConnectionResetError:
-        clients.pop(user, None)
+def push_notification(client):
+    while True:
+        active_room, room_users = pickle.loads(client.recv(1024))  # Receive data from client send_message() function
+        for user in room_users:
+            user_client = clients.get(user, None)
+            if user_client is not None:
+                user_client.send(active_room.decode('utf8'))  # Send room id of the new activity
 
 
 # Creating a socket just for listening:
@@ -316,10 +305,11 @@ def listening_socket():
         # Assume that the user has been added:
         # We wait for the client to send the socket the user_id: str
         username = client.recv(1024).decode('utf8')
-        if username.__contains__('IMA-Push-Notifier'):
-            handle_push_info(client)
-        else:
-            clients.update({username: client})
+        clients.update({username: client})
+
+        # Start a thread for this client to push notifications to other clients:
+        push_thread = Thread(target=push_notification, args=(client,))
+        push_thread.start()
 
 
 if __name__ == "__main__":

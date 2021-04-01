@@ -11,9 +11,9 @@ class User:
         return response.json(), response.status_code
 
     @staticmethod
-    def add(user_id: str, push_notification: bool = False) -> (dict, int):
+    def add(user_id: str) -> (dict, int):
         route = URL + f'/users'
-        response = post(route, {'username': user_id, 'push-notification': push_notification})
+        response = post(route, {'username': user_id})
         return response.json(), response.status_code
 
     @staticmethod
@@ -58,7 +58,7 @@ class Room:
         return response.json(), response.status_code
 
     @staticmethod
-    def get_all_users(room_id: str, requester: str) -> (dict, int):
+    def get_all_users(room_id, requester: str) -> (dict, int):
         route = URL + f'/room/{room_id}/users'
         response = get(route, {'requester': requester})
         return response.json(), response.status_code

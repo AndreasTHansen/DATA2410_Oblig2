@@ -50,7 +50,7 @@ class Users(Resource):
             user_info = users[user_id].copy()
 
             # If the requester is not the same as the queried user id we don't need to include the unread-messages
-            if requester is not user_id:
+            if requester[requester] != user_id:
                 user_info.pop('unread-messages', None)
 
             # Return json format of user

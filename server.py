@@ -258,7 +258,7 @@ api.add_resource(
 )
 
 
-def push_notification(client):
+def push_notification(username, client):
     while True:
         try:
             data = client.recv(1024)  # Receive data from client send_message() function
@@ -268,6 +268,9 @@ def push_notification(client):
                 if user_client is not None:
                     user_client.send(room.encode('utf8'))  # Send room id of the new activity
         except EOFError:
+            break
+        except ConnectionResetError:
+            clients.pop(username, None)
             break
 
 
@@ -288,7 +291,7 @@ def listening_socket():
             clients.update({username: client})
 
             # Start a thread for this client to push notifications to other clients:
-            push_thread = Thread(target=push_notification, args=(client,))
+            push_thread = Thread(target=push_notification, args=(username, client))
             push_thread.start()
 
 

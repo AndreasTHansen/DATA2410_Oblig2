@@ -267,9 +267,7 @@ def push_notification(username, client):
                 user_client = clients.get(user, None)
                 if user_client is not None:
                     user_client.send(room.encode('utf8'))  # Send room id of the new activity
-        except EOFError:
-            break
-        except ConnectionResetError:
+        except (EOFError, ConnectionResetError):
             clients.pop(username, None)
             break
 

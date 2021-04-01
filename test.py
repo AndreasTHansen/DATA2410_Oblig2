@@ -219,7 +219,7 @@ def live_messages():
                 else:
                     print(f"New activity in {room}")  # In case we do not get the desired dictionary
         except (requests.ConnectionError, ConnectionResetError):
-            print(f"Lost connection to the API server. Exiting the program!")
+            print(f"Lost connection to the API server. Exiting the program...")
             break
 
 
@@ -286,7 +286,7 @@ def commands(cmd: str):
 
 
 def exit_program(void=None):
-    print("Exiting program!")
+    print("Exiting program... Please wait!")
     abort()
 
 

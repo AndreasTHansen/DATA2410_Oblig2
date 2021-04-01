@@ -19,8 +19,10 @@ class User:
     @staticmethod
     def get(user_id: str, requester: str = None) -> (dict, int):
         route = URL + f'/user/{user_id}'
+        req = user_id if requester is None else requester
+        print(f"Requester: {req}")
         response = get(route, {
-            'requester': user_id if requester is None else requester
+            'requester': req
         })
         return response.json(), response.status_code
 

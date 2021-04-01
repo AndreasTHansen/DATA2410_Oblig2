@@ -267,7 +267,7 @@ def push_notification(client):
                 user_client = clients.get(user, None)
                 if user_client is not None:
                     user_client.send(room.encode('utf8'))  # Send room id of the new activity
-        except (EOFError, ConnectionResetError):
+        except EOFError:
             break
 
 
@@ -282,11 +282,14 @@ def listening_socket():
         # Assume that the user has been added:
         # We wait for the client to send the socket the user_id: str
         username = client.recv(1024).decode('utf8')
-        clients.update({username: client})
+        if username in clients:
+            client.close()
+        else:
+            clients.update({username: client})
 
-        # Start a thread for this client to push notifications to other clients:
-        push_thread = Thread(target=push_notification, args=(client,))
-        push_thread.start()
+            # Start a thread for this client to push notifications to other clients:
+            push_thread = Thread(target=push_notification, args=(client,))
+            push_thread.start()
 
 
 if __name__ == "__main__":

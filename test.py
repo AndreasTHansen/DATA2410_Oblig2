@@ -184,15 +184,17 @@ join(arguments.room)
 def live_messages():
     while True:
         room = client.recv(1024).decode('utf8')  # Receive the room from socket
+        print(f"Room received by client: {room}")
         if active_room == room:  # First check if the room has happened in the active room
             refresh_messages_in_this_room()
         elif push_enabled:  # Then check if push has been enabled
             user_info, c = User.get(active_user)  # Get information about active user:
+            print(f"user_info: {user_info}")
             unread_messages = user_info.get('unread-messages', None)
-            print(unread_messages)
+            print(f"Unread: {unread_messages}")
             if unread_messages is not None:
                 number_of_unread = unread_messages.get(room, None)
-                print(number_of_unread)
+                print(f"number_of_unread")
                 if number_of_unread is not None:
                     print(f"You have {number_of_unread} unread messages in {room}")
                 else:

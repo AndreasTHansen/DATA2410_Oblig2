@@ -211,7 +211,7 @@ def live_messages():
                         print(f"New activity in {room}")  # In case if we're not able to get the desired number
                 else:
                     print(f"New activity in {room}")  # In case we do not get the desired dictionary
-        except requests.ConnectionError:
+        except (requests.ConnectionError, ConnectionResetError):
             print(f"Lost connection to the API server. Exiting the program!")
             break
 

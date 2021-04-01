@@ -1,10 +1,11 @@
 from flask import Flask
-from flask_restful import Api, Resource, reqparse, abort, inputs
-from datetime import datetime
-from socket import socket, SOL_SOCKET, SO_REUSEADDR, AF_INET, SOCK_STREAM
-from threading import Thread
-from time import sleep
+from flask_restful import Api, Resource, reqparse, abort
+
+import datetime
+import socket
+import threading
 import pickle
+import argparse
 
 app = Flask(__name__)
 api = Api(app)
@@ -231,7 +232,7 @@ class Messages(Resource):  # Take a look at this
         permission_denied(requester=user_id, room=room_id)
 
         # Create a message json
-        now = datetime.now()
+        now = datetime.datetime.now()
         message = reqparse.RequestParser() \
             .add_argument('user', type=str, default=user_id) \
             .add_argument('room', type=str, default=room_id) \
@@ -273,10 +274,10 @@ def push_notification(username, client):
 
 
 # Creating a socket just for listening:
-def listening_socket():
-    service = socket(AF_INET, SOCK_STREAM)
-    service.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    service.bind(('127.0.0.1', 5005))
+def listening_socket(host, port):
+    service = socket.socket()
+    service.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    service.bind((host, port+5))
     service.listen()
     while True:
         client, addr = service.accept()
@@ -290,11 +291,26 @@ def listening_socket():
             clients.update({username: client})
 
             # Start a thread for this client to push notifications to other clients:
-            push_thread = Thread(target=push_notification, args=(username, client))
+            push_thread = threading.Thread(target=push_notification, args=(username, client))
             push_thread.start()
 
 
 if __name__ == "__main__":
-    listening_thread = Thread(target=listening_socket, daemon=True)
+    # Handle the commandline arguments:
+    parser = argparse.ArgumentParser(description="The API server implemented per accordance to the REST guideline using"
+                                                 "the Flask module. In addition, a raw socket is running "
+                                                 "simultaneously to handle push notifications to the client which in "
+                                                 "consequence, also signaling the client to fetch new messages from "
+                                                 "the API, in order to make messaging live for the user. "
+                                                 "A solution for the 2nd obligatory assignment in DATA2410 taught at "
+                                                 "OsloMet during spring 2021")
+    parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-H', '-ip', '--host', type=str, default='127.0.0.1',
+                        help='Define the host address you want the client to connect to (default=127.0.0.1)')
+    parser.add_argument('-P', '--port', type=int, default=5000,
+                        help='Define the port you want the client to connect to (default=5000)')
+    arguments = parser.parse_args()
+
+    listening_thread = threading.Thread(target=listening_socket, daemon=True, args=(arguments.host, arguments.port))
     listening_thread.start()
-    app.run(debug=True)
+    app.run(host=arguments.host, port=arguments.port, debug=arguments.debug)

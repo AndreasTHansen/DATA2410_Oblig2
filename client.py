@@ -1,74 +1,125 @@
 import argparse
 import json
 import pickle
+import random
+import re
 import requests
-from connections import User, Room, Message
-from socket import socket, AF_INET, SOCK_STREAM
-from sys import exit, platform
-from os import system, abort
-from time import sleep
-from re import sub
-from random import choice
-from threading import Thread
+import socket
+import time
+import sys
+import os
+import threading
 
-"""
-This section of the code handles the command line input and parsing all the arguments using the argparse module.
-The argparse module provides -h and --help by defaults and provide the user of this program to get an elaborate
-explanation for the usage of the program. Furthermore it also provides us an easier way to handle the arguments
-passed in by the user than using the sys module.
-"""
-parser = argparse.ArgumentParser(description="A client that connects to a REST API implemented with Flask"
-                                             "for chatting with other users, or bots if you are very lonely."
-                                             "A solution for the 2nd obligatory assignment in DATA2410 taught at "
-                                             "OsloMet during spring 2021")
-parser.add_argument('username', type=str,
-                    help='Desired username to connect as (Connected as a user by default, i.e. not as a bot)')
-parser.add_argument('-r', '--room', type=str, metavar='', nargs='+',
-                    help='The desired room(s) to join upon running the script')
-parser.add_argument('-p', '--push', action='store_true', help='Enable push notifications')
-group = parser.add_mutually_exclusive_group()
-group.add_argument('-u', '--user', action='store_true', help='Explicitly connect as a user')
-group.add_argument('-b', '--bot', action='store_true', help='Explicitly connect as a bot')
-arguments = parser.parse_args()
+URL = "http://127.0.0.1:5000/api"
 
-# Defining the global variables:
-active_user = arguments.username
+
+class User:
+    @staticmethod
+    def get_all(requester):
+        route = URL + '/users'
+        response = requests.get(route, {'requester': requester})
+        return response.json(), response.status_code
+
+    @staticmethod
+    def add(user_id):
+        route = URL + f'/users'
+        response = requests.post(route, {'username': user_id})
+        return response.json(), response.status_code
+
+    @staticmethod
+    def get(user_id, requester=None):
+        route = URL + f'/user/{user_id}'
+        response = requests.get(route, {
+            'requester': user_id if requester is None else requester
+        })
+        return response.json(), response.status_code
+
+    @staticmethod
+    def delete(user_id):
+        route = URL + f'/user/{user_id}'
+        response = requests.delete(route, data={'requester': user_id})
+        return response.json(), response.status_code
+
+
+class Room:
+    @staticmethod
+    def get_all(requester):
+        route = URL + '/rooms'
+        response = requests.get(route, {'requester': requester})
+        return response.json(), response.status_code
+
+    @staticmethod
+    def add(room_id, creator):
+        route = URL + f'/rooms'
+        response = requests.post(route, {'creator': creator, 'name': room_id})
+        return response.json(), response.status_code
+
+    @staticmethod
+    def get(room_id, requester):
+        route = URL + f'/room/{room_id}'
+        response = requests.get(route, {'requester': requester})
+        return response.json(), response.status_code
+
+    @staticmethod
+    def get_all_users(room_id, requester):
+        route = URL + f'/room/{room_id}/users'
+        response = requests.get(route, {'requester': requester})
+        return response.json(), response.status_code
+
+    @staticmethod
+    def join(room_id, requester):
+        route = URL + f'/room/{room_id}/users'
+        response = requests.post(route, {'requester': requester})
+        return response.json(), response.status_code
+
+
+class Message:
+    @staticmethod
+    def get_all_from_room(room_id, requester):
+        route = URL + f'/room/{room_id}/messages'
+        response = requests.get(route, {'requester': requester})
+        return response.json(), response.status_code
+
+    @staticmethod
+    def get_all_from_user(room_id, user_id, requester=None):
+        route = URL + f'/room/{room_id}/{user_id}/messages'
+        response = requests.get(route, {
+            'requester': user_id if requester is None else requester
+        })
+        return response.json(), response.status_code
+
+    @staticmethod
+    def send(room_id, user_id, message):
+        route = URL + f'/room/{room_id}/{user_id}/messages'
+        response = requests.post(route, {'message': message})
+        return response.json(), response.status_code
+
+
+# Defining global variables:
+active_user = None
 active_room = None
-push_enabled = arguments.push
-user_is_bot = arguments.bot
+client = socket.socket()
+push_enabled = None
+user_is_bot = None
 bot_responses = {}
 
-# We shall at this point check if the user has is a bot and handle it accordingly:
-if user_is_bot:
-    # First convert first letter to a capital letter:
-    active_user = active_user.capitalize()
-    # Then check if the bot is one of the bots we have implemented:
-    f = open('bots.json')
-    bots = json.load(f)
-    if active_user not in bots:
-        exit(f"Unable to summon the bot named \"{active_user}\"\n"
-             f"The only bots available are:\n{list(bots.keys())}")
-    # If a bot has successfully been summoned then store their responses and close the opened file:
-    bot_responses = bots[active_user]
-    f.close()
 
-
-# If the user is a bot we have to decide how the bot should respond to the message:
-def bot_respond_to_message(user: str, message: str):
+def bot_respond_to_message(user, message):
     global active_room
     global active_user
+    global client
     # Check first if the user is itself do nothing if it is:
     if user == active_user:
         return
 
     # Parse the message:
     # Remove all special characters and make every characters to lowercase:
-    message = sub('[^A-Za-z ]+', '', message).lower()
+    message = re.sub('[^A-Za-z ]+', '', message).lower()
     word_list = message.split()  # This list should contain one word from the message on each index
     for word in word_list:
         # Check each word and if it matches one of the keyword from the bot then respond accordingly
         if word in bot_responses:
-            the_response = choice(bot_responses[word])
+            the_response = random.choice(bot_responses[word])
             Message.send(active_room, active_user, the_response)
 
             room_users, c = Room.get_all_users(active_room, active_user)  # GET users in this room from API
@@ -78,38 +129,8 @@ def bot_respond_to_message(user: str, message: str):
             refresh_messages_in_this_room()
 
 
-# Attempt to add the user
-code = 0
-try:
-    response, code = User.add(active_user)
-except requests.ConnectionError:
-    exit(f"Cannot establish connection to the API server... Make sure the server is running!")
-
-# If the user does not exists we will get code == 201 i.e. we are registering them
-if code == 201:
-    print(f"Registering user with username \"{active_user}\"")
-# Connect the user to the push notification service which has two purposes:
-# Providing push notification if the user has it enabled and provide the user with live message updates:
-client = socket(AF_INET, SOCK_STREAM)
-client.connect(('127.0.0.1', 5005))
-
-# Provide the username that has connected to the push notification server:
-client.send(active_user.encode('utf8'))
-
-# Wait for socket server to send back a signal:
-signal = client.recv(1024).decode('utf8')
-ok = int(signal)
-
-if not ok:
-    exit(f"Server refused to establish connection because the username \"{active_user}\" is already in use...")
-
-# Tell the user that they have successfully connected:
-print(f"Connected to the chat as \"{active_user}\"")
-print(f"Push notification is {'enabled' if push_enabled else 'disabled'}")
-
-
 # Define a function to join a room which will be used later for commands:
-def join(rooms: list = None):
+def join(rooms=None):
     global active_room
     message_to_user = ''
     # Is rooms None?
@@ -160,20 +181,20 @@ def join(rooms: list = None):
         print(f"{message_to_user}\n")
         print(f"Entering {active_room} in {sec}...")
         sec -= 1
-        sleep(1)
+        time.sleep(1)
 
     # Then fetch all the messages in the active room:
     if user_is_bot:  # In case of a bot send an initial greeting in this room
-        Message.send(active_room, active_user, choice(bot_responses['greet']))
+        Message.send(active_room, active_user, random.choice(bot_responses['greet']))
     refresh_messages_in_this_room()
 
 
 # This function will refresh the terminal based on if the program is ran on windows or linux
 def clear_console():
-    if platform.__contains__('win'):
-        system('cls')
+    if sys.platform.__contains__('win'):
+        os.system('cls')
     else:
-        system('clear')
+        os.system('clear')
 
 
 # This function refreshes all messages inside the active room
@@ -191,11 +212,6 @@ def refresh_messages_in_this_room():
         from_user = all_messages[-1]['user']
         bot_respond_to_message(from_user, with_message)
     print(50 * '-')
-
-
-# After we have connected the chat as the user we need to join the room provided in the terminal
-# If none was provided then we will just simply force the user to create a room:
-join(arguments.room)
 
 
 # When an user has joined a room we should start listening for live messages:
@@ -291,9 +307,9 @@ def commands(cmd: str):
     return False
 
 
-def exit_program(void=None):
+def exit_program():
     print("Exiting program... Please wait!")
-    abort()
+    os.abort()
 
 
 def toggle_push_notification(void=None):
@@ -302,10 +318,104 @@ def toggle_push_notification(void=None):
     print(f"Push notifications has now been {'enabled' if push_enabled else 'disabled'}")
 
 
-# Start a thread for live messages:
-live_message_thread = Thread(target=live_messages)
-live_message_thread.start()
+def main():
+    # Handle the commandline arguments:
+    parser = argparse.ArgumentParser(description="A client that connects to a REST API implemented with Flask"
+                                                 "for chatting with other users, or bots if you are very lonely."
+                                                 "A solution for the 2nd obligatory assignment in DATA2410 taught at "
+                                                 "OsloMet during spring 2021")
+    parser.add_argument('username', type=str,
+                        help='Desired username to connect as (Connected as a user by default, i.e. not as a bot)')
+    parser.add_argument('-r', '--room', '--rooms', type=str, metavar='', nargs='+',
+                        help='The desired room(s) to join upon running the script')
+    parser.add_argument('-p', '--push', action='store_true', help='Enable push notifications')
+    parser.add_argument('-H', '-ip', '--host', type=str, default='127.0.0.1',
+                        help='Define the host address you want the client to connect to (default=127.0.0.1)')
+    parser.add_argument('-P', '--port', type=int, default=5000,
+                        help='Define the port you want the client to connect to (default=5000)')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-u', '--user', action='store_true', help='Explicitly connect as a user')
+    group.add_argument('-b', '--bot', action='store_true', help='Explicitly connect as a bot')
+    arguments = parser.parse_args()
 
-# Start a thread for sending messages:
-send_message_thread = Thread(target=send_messages, daemon=True)
-send_message_thread.start()
+    # Defining the global variables:
+    global URL
+
+    host = arguments.host
+
+    if arguments.host == 'localhost':
+        host = '127.0.0.1'
+
+    URL = f"http://{host}:{arguments.port}/api"
+
+    global active_user
+    global active_room
+    global push_enabled
+    global user_is_bot
+    global bot_responses
+    global client
+
+    active_user = arguments.username
+    active_room = None
+    push_enabled = arguments.push
+    user_is_bot = arguments.bot
+    bot_responses = {}
+
+    print(f"Connecting client to http://{host}:{arguments.port}")
+
+    # We shall at this point check if the user is a bot and handle it accordingly:
+    if user_is_bot:
+        # First convert first letter to a capital letter:
+        active_user = active_user.capitalize()
+        # Then check if the bot is one of the bots we have implemented:
+        f = open('bots.json')
+        bots = json.load(f)
+        if active_user not in bots:
+            exit(f"Unable to summon the bot named \"{active_user}\"\n"
+                 f"The only bots available are:\n{list(bots.keys())}")
+        # If a bot has successfully been summoned then store their responses and close the opened file:
+        bot_responses = bots[active_user]
+        f.close()
+
+    # Attempt to add the user
+    code = 0
+    try:
+        response, code = User.add(active_user)
+    except requests.ConnectionError:
+        exit(f"Cannot establish connection to the API server... Make sure the server is running!")
+
+    # If the user does not exists we will get code == 201 i.e. we are registering them
+    if code == 201:
+        print(f"Registering user with username \"{active_user}\"")
+    # Connect the user to the push notification service which has two purposes:
+    # Providing push notification if the user has it enabled and provide the user with live message updates:
+    client = socket.socket()
+    client.connect((arguments.host, arguments.port+5))
+
+    # Provide the username that has connected to the push notification server:
+    client.send(active_user.encode('utf8'))
+
+    # Wait for socket server to send back a signal:
+    signal = client.recv(1024).decode('utf8')
+    ok = int(signal)
+
+    if not ok:
+        exit(f"Server refused to establish connection because the username \"{active_user}\" is already in use...")
+
+    # Tell the user that they have successfully connected:
+    print(f"Connected to the chat as \"{active_user}\"")
+    print(f"Push notification is {'enabled' if push_enabled else 'disabled'}")
+
+    join(arguments.room)
+
+    # Start a thread for live messages:
+    live_message_thread = threading.Thread(target=live_messages)
+    live_message_thread.start()
+
+    # Start a thread for sending messages:
+    send_message_thread = threading.Thread(target=send_messages, daemon=True)
+    send_message_thread.start()
+
+
+if __name__ == '__main__':
+    main()

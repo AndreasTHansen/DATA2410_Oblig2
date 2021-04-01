@@ -223,7 +223,7 @@ def send_messages():
         try:
             message = input('').strip()
         except EOFError:
-            break
+            exit_program()
         # Only non-bot users can use this thread to send messages:
         if not commands(message) and not user_is_bot and message:
             Message.send(active_room, active_user, message)  # Send the message via API

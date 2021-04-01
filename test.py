@@ -219,7 +219,11 @@ def live_messages():
 # We must also be able to send messages:
 def send_messages():
     while True:
-        message = input('').strip()
+        message = ''  # Initializing message variable
+        try:
+            message = input('').strip()
+        except EOFError:
+            break
         # Only non-bot users can use this thread to send messages:
         if not commands(message) and not user_is_bot and message:
             Message.send(active_room, active_user, message)  # Send the message via API

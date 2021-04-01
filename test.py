@@ -202,10 +202,6 @@ def live_messages():
 
 # We must also be able to send messages:
 def send_messages():
-    global active_room
-    global active_user
-
-    refresh_messages_in_this_room()
     while True:
         message = input('').strip()
         # Only non-bot users can use this thread to send messages:

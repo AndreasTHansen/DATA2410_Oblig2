@@ -96,6 +96,13 @@ client.connect(('127.0.0.1', 5005))
 # Provide the username that has connected to the push notification server:
 client.send(active_user.encode('utf8'))
 
+# Wait for socket server to send back a signal:
+signal = client.recv(1024).decode('utf8')
+ok = int(signal)
+
+if not ok:
+    exit(f"Server refused to establish connection because the username \"{active_user}\" is already in use...")
+
 # Tell the user that they have successfully connected:
 print(f"Connected to the chat as \"{active_user}\"")
 print(f"Push notification is {'enabled' if push_enabled else 'disabled'}")
@@ -200,8 +207,8 @@ def live_messages():
 
             # Apparently if someone already is signed in with the same username then room is blank
             if not room:  # In that case we will just tell the user that
-                clear_console()
-                print(f"Something went wrong... Connection to the server aborted")
+                print(f"Lost connection to the server...")
+                print(f"Exiting program!")
                 break
             if active_room == room:  # First check if the room has happened in the active room
                 refresh_messages_in_this_room()

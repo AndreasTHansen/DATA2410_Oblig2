@@ -284,8 +284,9 @@ def listening_socket():
         # We wait for the client to send the socket the user_id: str
         username = client.recv(1024).decode('utf8')
         if username in clients:
-            client.close()
+            client.send('0'.encode('utf8'))
         else:
+            client.send('1'.encode('utf8'))
             clients.update({username: client})
 
             # Start a thread for this client to push notifications to other clients:

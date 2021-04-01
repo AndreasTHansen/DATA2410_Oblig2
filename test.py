@@ -172,7 +172,7 @@ def refresh_messages_in_this_room():
     all_messages, c = Message.get_all_from_room(active_room, active_user)
     print(30 * '-')
     for message in all_messages:
-        print(f"{message['user']}: {message['message']} \t\t {message['time']}")
+        print(f"{message['time']} {message['user']}: {message['message']}")
     if user_is_bot:
         # Grab the last message:
         with_message = all_messages[-1]['message']

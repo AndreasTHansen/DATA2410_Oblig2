@@ -288,12 +288,15 @@ api.add_resource(
 
 def push_notification(client):
     while True:
-        data = client.recv(1024)  # Receive data from client send_message() function
-        room, room_users = pickle.loads(data)
-        for user in room_users:
-            user_client = clients.get(user, None)
-            if user_client is not None:
-                user_client.send(room.encode('utf8'))  # Send room id of the new activity
+        try:
+            data = client.recv(1024)  # Receive data from client send_message() function
+            room, room_users = pickle.loads(data)
+            for user in room_users:
+                user_client = clients.get(user, None)
+                if user_client is not None:
+                    user_client.send(room.encode('utf8'))  # Send room id of the new activity
+        except EOFError:
+            break
 
 
 # Creating a socket just for listening:

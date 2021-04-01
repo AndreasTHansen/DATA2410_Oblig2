@@ -82,7 +82,7 @@ def bot_respond_to_message(user: str, message: str):
 code = 0
 try:
     response, code = User.add(active_user)
-except ConnectionError:
+except requests.ConnectionError:
     exit(f"Cannot establish connection to the API server... Make sure the server is running!")
 
 # If the user does not exists we will get code == 201 i.e. we are registering them

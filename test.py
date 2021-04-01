@@ -198,12 +198,6 @@ def live_messages():
         try:
             room = client.recv(1024).decode('utf8')  # Receive the room from socket
 
-            # Apparently if someone already is signed in with the same username then room is blank
-            if not room:  # In that case we will just tell the user that
-                clear_console()
-                print(f"Attempt to join chat failed because the desired username"
-                      f" \"{active_user}\" is already in use...")
-                break
             if active_room == room:  # First check if the room has happened in the active room
                 refresh_messages_in_this_room()
             elif push_enabled:  # Then check if push has been enabled

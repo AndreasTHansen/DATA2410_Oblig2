@@ -314,6 +314,6 @@ def listening_socket():
 
 
 if __name__ == "__main__":
-    listening_thread = Thread(target=listening_socket)
+    listening_thread = Thread(target=listening_socket, daemon=True)
     listening_thread.start()
     app.run(debug=True)

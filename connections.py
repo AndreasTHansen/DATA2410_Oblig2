@@ -20,7 +20,7 @@ class User:
     def get(user_id: str, requester: str = None) -> (dict, int):
         route = URL + f'/user/{user_id}'
         response = get(route, {
-            'requester': user_id
+            'requester': user_id if requester is None else requester
         })
         return response.json(), response.status_code
 

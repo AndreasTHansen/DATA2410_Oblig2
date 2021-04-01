@@ -184,23 +184,19 @@ join(arguments.room)
 def live_messages():
     while True:
         room = client.recv(1024).decode('utf8')  # Receive the room from socket
-        print(f"Room received by client: {room}")
         if active_room == room:  # First check if the room has happened in the active room
             refresh_messages_in_this_room()
         elif push_enabled:  # Then check if push has been enabled
             user_info, c = User.get(active_user)  # Get information about active user:
-            print(f"user_info: {user_info}")
-            unread_messages = user_info.get('unread-messages', None)
-            print(f"Unread: {unread_messages}")
+            unread_messages = user_info.get('unread-messages', None)  # Get the unread messages
             if unread_messages is not None:
-                number_of_unread = unread_messages.get(room, None)
-                print(f"number_of_unread")
+                number_of_unread = unread_messages.get(room, None)  # Grab the number in given room
                 if number_of_unread is not None:
-                    print(f"You have {number_of_unread} unread messages in {room}")
+                    print(f"You have {number_of_unread} unread messages in {room}")  # Print notification to the user
                 else:
-                    print(f"New activity in {room}")
+                    print(f"New activity in {room}")  # In case if we're not able to get the desired number
             else:
-                print(f"New activity in {room}")
+                print(f"New activity in {room}")  # In case we do not get the desired dictionary
 
 
 # We must also be able to send messages:

@@ -189,8 +189,10 @@ def live_messages():
         elif push_enabled:  # Then check if push has been enabled
             user_info, c = User.get(active_user)  # Get information about active user:
             unread_messages = user_info.get('unread-messages', None)
+            print(unread_messages)
             if unread_messages is not None:
                 number_of_unread = unread_messages.get(room, None)
+                print(number_of_unread)
                 if number_of_unread is not None:
                     print(f"You have {number_of_unread} unread messages in {room}")
                 else:

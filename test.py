@@ -147,6 +147,7 @@ def join(rooms: list = None):
     # Then fetch all the messages in the active room:
     if user_is_bot:  # In case of a bot send an initial greeting in this room
         Message.send(active_room, active_user, choice(bot_responses['greet']))
+    refresh_messages_in_this_room()
 
 
 # This function will refresh the terminal based on if the program is ran on windows or linux

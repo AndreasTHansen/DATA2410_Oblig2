@@ -170,7 +170,7 @@ def refresh_messages_in_this_room():
     clear_console()
     # Get all the messages inside that room:
     all_messages, c = Message.get_all_from_room(active_room, active_user)
-    print(30 * '-')
+    print(50 * '-')
     for message in all_messages:
         print(f"\n{message['time']}\n{message['user']}: {message['message']}\n")
     if user_is_bot:
@@ -178,7 +178,7 @@ def refresh_messages_in_this_room():
         with_message = all_messages[-1]['message']
         from_user = all_messages[-1]['user']
         bot_respond_to_message(from_user, with_message)
-    print(30 * '-')
+    print(50 * '-')
 
 
 # After we have connected the chat as the user we need to join the room provided in the terminal

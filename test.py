@@ -69,6 +69,11 @@ def bot_respond_to_message(user: str, message: str):
         if word in bot_responses:
             the_response = choice(bot_responses[word])
             Message.send(active_room, active_user, the_response)
+
+            room_users, c = Room.get_all_users(active_room, active_user)  # GET users in this room from API
+            data = pickle.dumps((active_room, room_users))  # Convert tuple to bytes
+            client.send(data)  # Send data through socket
+
             refresh_messages_in_this_room()
 
 

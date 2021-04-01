@@ -303,7 +303,7 @@ if __name__ == "__main__":
                                                  "consequence, also signaling the client to fetch new messages from "
                                                  "the API, in order to make messaging live for the user. "
                                                  "A solution for the 2nd obligatory assignment in DATA2410 taught at "
-                                                 "OsloMet during spring 2021")
+                                                 "OsloMet during spring 2021.")
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-H', '-ip', '--host', type=str, default='127.0.0.1',
                         help='Define the host address you want the client to connect to (default=127.0.0.1)')

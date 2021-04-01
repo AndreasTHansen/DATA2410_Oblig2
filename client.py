@@ -323,7 +323,7 @@ def main():
     parser = argparse.ArgumentParser(description="A client that connects to a REST API implemented with Flask"
                                                  "for chatting with other users, or bots if you are very lonely."
                                                  "A solution for the 2nd obligatory assignment in DATA2410 taught at "
-                                                 "OsloMet during spring 2021")
+                                                 "OsloMet during spring 2021.")
     parser.add_argument('username', type=str,
                         help='Desired username to connect as (Connected as a user by default, i.e. not as a bot)')
     parser.add_argument('-r', '--room', '--rooms', type=str, metavar='', nargs='+',

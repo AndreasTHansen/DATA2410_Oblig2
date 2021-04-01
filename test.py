@@ -213,7 +213,6 @@ def live_messages():
                     print(f"New activity in {room}")  # In case we do not get the desired dictionary
         except requests.ConnectionError:
             print(f"Lost connection to the API server. Exiting the program!")
-            exit()
             break
 
 
@@ -287,9 +286,9 @@ def toggle_push_notification(void=None):
 
 
 # Start a thread for live messages:
-live_message_thread = Thread(target=live_messages, daemon=True)
+live_message_thread = Thread(target=live_messages)
 live_message_thread.start()
 
 # Start a thread for sending messages:
-send_message_thread = Thread(target=send_messages)
+send_message_thread = Thread(target=send_messages, daemon=True)
 send_message_thread.start()

@@ -199,7 +199,6 @@ def live_messages():
                 print(f"New activity in {room}")
 
 
-
 # We must also be able to send messages:
 def send_messages():
     global active_room
@@ -211,6 +210,7 @@ def send_messages():
         # Only non-bot users can use this thread to send messages:
         if not commands(message) and not user_is_bot and message:
             Message.send(active_room, active_user, message)  # Send the message via API
+
             room_users, c = Room.get_all_users(active_room, active_user)  # GET users in this room from API
             data = pickle.dumps((active_room, room_users))  # Convert tuple to bytes
             client.send(data)  # Send data through socket

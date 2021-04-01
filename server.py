@@ -49,6 +49,7 @@ class Users(Resource):
 
             user_info = users[user_id].copy()
 
+            # If the requester is not the same as the queried user id we don't need to include the unread-messages
             if user_id != requester:
                 user_info.pop('unread-messages', None)
 
@@ -291,7 +292,7 @@ def push_notification(client):
         for user in room_users:
             user_client = clients.get(user, None)
             if user_client is not None:
-                user_client.send(active_room.decode('utf8'))  # Send room id of the new activity
+                user_client.send(active_room.encode('utf8'))  # Send room id of the new activity
 
 
 # Creating a socket just for listening:

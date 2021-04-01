@@ -213,6 +213,7 @@ def live_messages():
                     print(f"New activity in {room}")  # In case we do not get the desired dictionary
         except requests.ConnectionError:
             print(f"Lost connection to the API server. Exiting the program!")
+            exit()
             break
 
 

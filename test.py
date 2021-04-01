@@ -77,8 +77,12 @@ def bot_respond_to_message(user: str, message: str):
             refresh_messages_in_this_room()
 
 
+code = 0
 # Attempt to add the user
-response, code = User.add(active_user)
+try:
+    response, code = User.add(active_user)
+except ConnectionRefusedError:
+    exit(f"Unable to establish connection with the API server!")
 
 # If the user does not exists we will get code == 201 i.e. we are registering them
 if code == 201:

@@ -25,13 +25,6 @@ class User:
         return response.json(), response.status_code
 
     @staticmethod
-    def toggle_push(user_id: str):
-        route = URL + f'/user/{user_id}'
-        user = get(route, {'requester': user_id}).json()
-        response = patch(route, {'requester': user_id, 'push-notification': not user['push-notification']})
-        return response.json(), response.status_code
-
-    @staticmethod
     def delete(user_id: str) -> (dict, int):
         route = URL + f'/user/{user_id}'
         response = delete(route, data={'requester': user_id})

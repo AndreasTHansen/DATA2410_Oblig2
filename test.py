@@ -88,6 +88,7 @@ client.send(active_user.encode('utf8'))
 
 # Tell the user that they have successfully connected:
 print(f"Connected to the chat as \"{active_user}\"")
+print(f"Push notification is {'enabled' if push_enabled else 'disabled'}")
 
 
 # Define a function to join a room which will be used later for commands:
@@ -267,7 +268,6 @@ def toggle_push_notification(void=None):
     global push_enabled
     push_enabled = not push_enabled
     print(f"Push notifications has now been {'enabled' if push_enabled else 'disabled'}")
-    User.toggle_push(active_user)
 
 
 # Start a thread for live messages:

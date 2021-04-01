@@ -94,34 +94,6 @@ class Users(Resource):
         # Remove and return the user id, None is returned as default value to avoid KeyError
         return users.pop(user_id, None), 200  # OK
 
-    def patch(self, user_id: str) -> (dict, int):
-        # checking global restriction:
-        # Gathering patched information:
-        patched = reqparse.RequestParser() \
-            .add_argument('requester', type=str, required=True) \
-            .add_argument('username', type=str) \
-            .add_argument('rooms', type=list) \
-            .add_argument('unread-messages', type=dict) \
-            .parse_args()
-
-        # Remove the requester field and store it into a variable for validation:
-        requester = patched.pop('requester')
-        permission_denied(requester)
-
-        abort_if_not_exists(user_id, users, f"Cannot find user with user id \"{user_id}\"!")
-
-        # Adding a new security layer to not be able to update other user's info other than themselves
-        if requester != user_id:
-            return {'message': f"Cannot change another user's info"}, 451
-
-        # Update all the information provided:
-        for key in patched:
-            if patched[key] is not None:
-                users[user_id].update({key: patched[key]})
-
-        # Return user's new information
-        return users[user_id], 200  # OK
-
 
 # Add the class to route
 api.add_resource(Users, "/api/users", "/api/user/<string:user_id>")

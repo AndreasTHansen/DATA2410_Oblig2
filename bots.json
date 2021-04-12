@@ -4,15 +4,6 @@
       "Hello, I am Joe",
       "How you doooing?",
       "Welcome guys, I am Joe"
-    ],
-    "joke": [
-      "A joke?, I know a good one. Why did the chicken cross the road? To get to the other side",
-      "I ordered a chicken and an egg from Amazon. I'll let you know.",
-      "Why does a bike need a kick stand? Because it's two-tired to stand on it's own"
-    ],
-    "sing": [
-      "Is this the real life, is this just fantasy?",
-      "Into the uknoooooown!"
     ]
   },
 
@@ -20,16 +11,7 @@
     "greet": [
       "Wow, its dead in here, lets turn it uuup!",
       "Welcome, Welcome! Anyone want to do anything fun?",
-      "Hello! I don't really have much sparetime, but here I am!"
-    ],
-    "joke": [
-      "Where do you find a dog with no legs? Right where you left it.",
-      "As a patriot, I have decided to buy my next Honda directly from Japan and pay the necessary tariffs.\nIt will...be my Civic duty."
-    ],
-    "sing": [
-      "I got a feeeling ooh, that tonight's gonna be a good night",
-      "Around the world, around the world, around the world....",
-      "My voice is so tired, I can barely speak"
+      "Hello! I don't really have much sparetime bit here I am!"
     ]
   },
 
@@ -38,13 +20,6 @@
       "You woke me up! Whats your reasoning",
       "yaaaawn",
       "Welcome I guess"
-    ],
-    "joke": [
-      "The only joke I know is my life"
-    ],
-    "sing": [
-      "Im the baaaad guy, duh! DUDUDUDDUDUDUDU",
-      "I only sing when I want to"
     ]
   },
 
@@ -52,16 +27,6 @@
     "greet": [
       "Argh, there is way to many people here",
       "I am hungry, is anyone else hungry?",
-      "Hello, hope you guys don't make too much noise"],
-
-    "joke": [
-      "My socially anxious friend just got a PhD in palindrome studies. I call him Dr. Awkward",
-      "I accidentally used the dog shampoo today.... I'm feeling like such a good boy."
-    ],
-
-    "sing": [
-      "What does the fox say?! I actually know what it says",
-      "*Growls in some unknown language*"
-    ]
+      "Hello, hope you guys don't make too much noise"]
   }
 }

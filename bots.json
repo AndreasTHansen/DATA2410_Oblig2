@@ -20,7 +20,15 @@
       "Why did the saylor jump in the water? Because Y knot",
       "What’s green, has four legs, and is deadly when it jumps on you?\nA billiards table",
       "A physicist sees a man about to jump off of the Empire State Building...\nHe yells,” Don’t do it, you have too much potential”"
-    ]
+    ],
+
+    "joke": [
+      "A joke?, I know a good one. Why did the chicken cross the road? To get to the other side",
+      "I ordered a chicken and an egg from Amazon. I'll let you know.",
+      "Why does a bike need a kick stand? Because it's two-tired to stand on it's own"
+    ],
+    "sing": ["Is this the real life, is this just fantasy?",
+      "Into the uknoooooown!"]
   },
 
   "Peter": {

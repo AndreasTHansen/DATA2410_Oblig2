@@ -368,7 +368,7 @@ def main():
         # First convert first letter to a capital letter:
         active_user = active_user.capitalize()
         # Then check if the bot is one of the bots we have implemented:
-        with open('bots.json') as f:
+        with open('bots.json', encoding='utf8') as f:
             bots = json.load(f)
             if active_user not in bots:
                 exit(f"Unable to summon the bot named \"{active_user}\"\n"

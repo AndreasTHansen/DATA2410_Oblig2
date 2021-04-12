@@ -346,7 +346,7 @@ def main():
     if arguments.host == 'localhost':
         host = '127.0.0.1'
 
-    URL = f"http://{host}:{arguments.port}/api"
+    URL = f'http://{host}:{arguments.port}/api'
 
     global active_user
     global active_room

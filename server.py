@@ -1,8 +1,11 @@
 from flask import Flask
-from flask_restful import Api, Resource, reqparse, abort, inputs
-from datetime import datetime
-from socket import socket, SHUT_RDWR
-from threading import Thread
+from flask_restful import Api, Resource, reqparse, abort
+
+import datetime
+import socket
+import threading
+import pickle
+import argparse
 
 app = Flask(__name__)
 api = Api(app)
@@ -45,8 +48,14 @@ class Users(Resource):
             # Check if specified user id exists
             abort_if_not_exists(user_id, users, f"Cannot find user with user id \"{user_id}\"")
 
+            user_info = users[user_id].copy()
+
+            # If the requester is not the same as the queried user id we don't need to include the unread-messages
+            if requester['requester'] != user_id:
+                user_info.pop('unread-messages', None)
+
             # Return json format of user
-            return users[user_id], 200  # code 200 = OK
+            return user_info, 200  # code 200 = OK
 
         # If no user id has been provided return the whole list as json format
         return users, 200  # code 200 = OK
@@ -55,7 +64,6 @@ class Users(Resource):
         # Collect necessary data to create a user {'username': user_id}
         user = reqparse.RequestParser() \
             .add_argument('username', type=str, required=True) \
-            .add_argument('push-notification', type=inputs.boolean, required=True) \
             .add_argument('rooms', type=list, default=[]) \
             .add_argument('unread-messages', type=dict, default={}) \
             .parse_args(strict=True)
@@ -67,7 +75,7 @@ class Users(Resource):
         abort_if_exists(
             user['username'], users,
             f"\"{user['username']}\" already exists!"
-        )
+        )  # 409
 
         # Add the new user to users:
         users.update({user['username']: user})
@@ -87,35 +95,6 @@ class Users(Resource):
         # Remove and return the user id, None is returned as default value to avoid KeyError
         return users.pop(user_id, None), 200  # OK
 
-    def patch(self, user_id: str) -> (dict, int):
-        # checking global restriction:
-        # Gathering patched information:
-        patched = reqparse.RequestParser() \
-            .add_argument('requester', type=str, required=True) \
-            .add_argument('username', type=str) \
-            .add_argument('push-notification', type=inputs.boolean) \
-            .add_argument('rooms', type=list) \
-            .add_argument('unread-messages', type=dict) \
-            .parse_args()
-
-        # Remove the requester field and store it into a variable for validation:
-        requester = patched.pop('requester')
-        permission_denied(requester)
-
-        abort_if_not_exists(user_id, users, f"Cannot find user with user id \"{user_id}\"!")
-
-        # Adding a new security layer to not be able to update other user's info other than themselves
-        if requester != user_id:
-            return {'message': f"Cannot change another user's info"}, 451
-
-        # Update all the information provided:
-        for key in patched:
-            if patched[key] is not None:
-                users[user_id].update({key: patched[key]})
-
-        # Return user's new information
-        return users[user_id], 200  # OK
-
 
 # Add the class to route
 api.add_resource(Users, "/api/users", "/api/user/<string:user_id>")
@@ -134,9 +113,8 @@ class ChatRooms(Resource):
             abort_if_not_exists(room_id, rooms, f"Cannot find room with room id {room_id}!")
 
             # Return a room without the messages inside that room:
-            room_info = rooms[room_id]
-            room_info.pop('messages')
-
+            room_info = rooms[room_id].copy()
+            room_info.pop('messages', None)
             return room_info, 200  # OK
 
         # As there are potential for a lot of messages in each room we will only return a list of rooms together
@@ -254,7 +232,7 @@ class Messages(Resource):  # Take a look at this
         permission_denied(requester=user_id, room=room_id)
 
         # Create a message json
-        now = datetime.now()
+        now = datetime.datetime.now()
         message = reqparse.RequestParser() \
             .add_argument('user', type=str, default=user_id) \
             .add_argument('room', type=str, default=room_id) \
@@ -281,43 +259,58 @@ api.add_resource(
 )
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
+def push_notification(username, client):
     while True:
-        for room in rooms:
-            print(room['messages'].value)
-
-    server = socket()
-    server.bind(("127,0,0,1", 5000))
-    server.listen()
-
-    clients = {}
-
-
-    def push(user):
-        while users[user]['push-notification']:
-            clients_unread_messages = clients[user]['unread-messages']
-            users_unread_messages = users[user]['unread-messages']
-            for room in user['rooms']:
-                number_of_new_messages = users_unread_messages[room] - clients_unread_messages[room]
-                if number_of_new_messages > 0:
-                    clients[user]['client'] \
-                        .send(f"You have {number_of_new_messages} unread messages in room \"{room}\"".encode('utf8'))
-                elif number_of_new_messages < 0:
-                    clients[user]['unread-messages'][room] = 0
-
-        clients[user]['client'].shutdown(SHUT_RDWR)
-        clients[user]['client'].close()
-        clients.pop(user, None)
+        try:
+            data = client.recv(1024)  # Receive data from client send_message() function
+            room, room_users = pickle.loads(data)
+            for user in room_users:
+                user_client = clients.get(user, None)
+                if user_client is not None:
+                    user_client.send(room.encode('utf8'))  # Send room id of the new activity
+        except (EOFError, ConnectionResetError):
+            clients.pop(username, None)
+            break
 
 
+# Creating a socket just for listening:
+def listening_socket(host, port):
+    service = socket.socket()
+    service.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    service.bind((host, port+5))
+    service.listen()
     while True:
-        client, address = server.accept()
+        client, addr = service.accept()
+        # Assume that the user has been added:
+        # We wait for the client to send the socket the user_id: str
         username = client.recv(1024).decode('utf8')
-        if users[username]['push-notification']:
-            clients[username] = {
-                'client': client,
-                # {room1: 3, room2: 2, room3: 0}
-                'unread-messages': users[username]['unread-messages']
-            }
-            Thread(target=push, args=(username,)).start()
+        if username in clients:
+            client.send('0'.encode('utf8'))
+        else:
+            client.send('1'.encode('utf8'))
+            clients.update({username: client})
+
+            # Start a thread for this client to push notifications to other clients:
+            push_thread = threading.Thread(target=push_notification, args=(username, client))
+            push_thread.start()
+
+
+if __name__ == "__main__":
+    # Handle the commandline arguments:
+    parser = argparse.ArgumentParser(description="The API server implemented per accordance to the REST guideline using"
+                                                 "the Flask module. In addition, a raw socket is running "
+                                                 "simultaneously to handle push notifications to the client which in "
+                                                 "consequence, also signaling the client to fetch new messages from "
+                                                 "the API, in order to make messaging live for the user. "
+                                                 "A solution for the 2nd obligatory assignment in DATA2410 taught at "
+                                                 "OsloMet during spring 2021.")
+    parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-H', '-ip', '--host', type=str, default='127.0.0.1',
+                        help='Define the host address you want the client to connect to (default=127.0.0.1)')
+    parser.add_argument('-P', '--port', type=int, default=5000,
+                        help='Define the port you want the client to connect to (default=5000)')
+    arguments = parser.parse_args()
+
+    listening_thread = threading.Thread(target=listening_socket, daemon=True, args=(arguments.host, arguments.port))
+    listening_thread.start()
+    app.run(host=arguments.host, port=arguments.port, debug=arguments.debug)

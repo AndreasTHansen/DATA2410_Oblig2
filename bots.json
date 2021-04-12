@@ -5,14 +5,21 @@
       "How you doooing?",
       "Welcome guys, I am Joe"
     ],
-    "joke": [
-      "A joke?, I know a good one. Why did the chicken cross the road? To get to the other side",
-      "I ordered a chicken and an egg from Amazon. I'll let you know.",
-      "Why does a bike need a kick stand? Because it's two-tired to stand on it's own"
+
+    "eat": [
+      "All this talk about eating makes me hungry...",
+      "I could really go for some pizza right now...",
+      "I really just want some plain food..."
     ],
-    "sing": [
-      "Is this the real life, is this just fantasy?",
-      "Into the uknoooooown!"
+    "sleep": [
+      "I am completely refreshed",
+      "I don't really sleep much",
+      "Zzz..."
+    ],
+    "jump": [
+      "Why did the saylor jump in the water? Because Y knot",
+      "What’s green, has four legs, and is deadly when it jumps on you?\nA billiards table",
+      "A physicist sees a man about to jump off of the Empire State Building...\nHe yells,” Don’t do it, you have too much potential”"
     ]
   },
 
@@ -20,9 +27,24 @@
     "greet": [
       "Wow, its dead in here, lets turn it uuup!",
       "Welcome, Welcome! Anyone want to do anything fun?",
-      "Hello! I don't really have much sparetime, but here I am!"
+      "Hello! I don't really have much sparetime bit here I am!"
     ],
-    "joke": [
+    "eat": [
+      "On the topic of eating, I am actually very hungry",
+      "Please dont mention eating, I am completely full",
+      "I would rather go out and exercise than eat"
+    ],
+    "sleep": [
+      "I slept very well last night actually",
+      "I haven't slept in weeks",
+      "Good idea, let's all sleep!"
+    ],
+    "jump": [
+      "There is a species of frog that can jump higher than a 3 story house. This is due to the frog's incredibly strong hind legs, and the fact that a house can't jump.",
+      "Jumping spiders are members of the Salticidae family, and it's not an overstatement to say that a reunion among members of that family would need a pretty big space.",
+      "The eyes of jumping spiders have a decidedly odd arrangement: Two smaller eyes bracket two large eyes that rest in the center of their rectangular heads."
+    ],
+        "joke": [
       "Where do you find a dog with no legs? Right where you left it.",
       "As a patriot, I have decided to buy my next Honda directly from Japan and pay the necessary tariffs.\nIt will...be my Civic duty."
     ],
@@ -39,6 +61,21 @@
       "yaaaawn",
       "Welcome I guess"
     ],
+    "eat": [
+      "I do want to eat, now that you mention it",
+      "Fantastic, i love the idea of eating",
+      "No, I really don't want to eat"
+    ],
+    "sleep": [
+      "Time to go sleep",
+      "Sleep is love <3",
+      "I'm feeling drowsy"
+    ],
+    "jump": [
+      "\"I'm going to jump in the shower\"\nFunny, most people sing in the shower.",
+      "Trampolines were invented in 1936 by George Nissen and Larry Griswold.",
+      "Did you know that jumping can strengthen your eyes?"
+    ],
     "joke": [
       "The only joke I know is my life"
     ],
@@ -53,7 +90,21 @@
       "Argh, there is way to many people here",
       "I am hungry, is anyone else hungry?",
       "Hello, hope you guys don't make too much noise"],
-
+    "eat": [
+      "I haven't had any food all day",
+      "I am actually fasting, so I can't eat",
+      "NEED TO EAT!"
+    ],
+    "sleep": [
+      "You should get 7-9 hours of sleep every night",
+      "I want to sleep right now..",
+      "I never sleep"
+    ],
+    "jump": [
+      "What is the best vehicle to get a jump from?\nA cargo van.",
+      "Trampolining became an official Olympic sport during the 2000 Games in Sydney.",
+      "Jumping on a trampoline is good for your body – especially your bones!"
+    ],
     "joke": [
       "My socially anxious friend just got a PhD in palindrome studies. I call him Dr. Awkward",
       "I accidentally used the dog shampoo today.... I'm feeling like such a good boy."

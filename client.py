@@ -307,7 +307,7 @@ def commands(cmd: str):
     return False
 
 
-def exit_program():
+def exit_program(void=None):
     print("Exiting program... Please wait!")
     os.abort()
 
@@ -346,7 +346,7 @@ def main():
     if arguments.host == 'localhost':
         host = '127.0.0.1'
 
-    URL = f"http://{host}:{arguments.port}/api"
+    URL = f'http://{host}:{arguments.port}/api'
 
     global active_user
     global active_room
@@ -368,14 +368,13 @@ def main():
         # First convert first letter to a capital letter:
         active_user = active_user.capitalize()
         # Then check if the bot is one of the bots we have implemented:
-        f = open('bots.json')
-        bots = json.load(f)
-        if active_user not in bots:
-            exit(f"Unable to summon the bot named \"{active_user}\"\n"
-                 f"The only bots available are:\n{list(bots.keys())}")
-        # If a bot has successfully been summoned then store their responses and close the opened file:
-        bot_responses = bots[active_user]
-        f.close()
+        with open('bots.json') as f:
+            bots = json.load(f)
+            if active_user not in bots:
+                exit(f"Unable to summon the bot named \"{active_user}\"\n"
+                     f"The only bots available are:\n{list(bots.keys())}")
+            # If a bot has successfully been summoned then store their responses and close the opened file:
+            bot_responses = bots[active_user]
 
     # Attempt to add the user
     code = 0
@@ -389,7 +388,6 @@ def main():
         print(f"Registering user with username \"{active_user}\"")
     # Connect the user to the push notification service which has two purposes:
     # Providing push notification if the user has it enabled and provide the user with live message updates:
-    client = socket.socket()
     client.connect((arguments.host, arguments.port+5))
 
     # Provide the username that has connected to the push notification server:

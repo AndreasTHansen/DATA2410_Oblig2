@@ -4,6 +4,21 @@
       "Hello, I am Joe",
       "How you doooing?",
       "Welcome guys, I am Joe"
+    ],
+    "eat": [
+      "All this talk about eating makes me hungry...",
+      "I could really go for some pizza right now...",
+      "I really just want some plain food..."
+    ],
+    "sleep": [
+      "I am completely refreshed",
+      "I don't really sleep much",
+      "Zzz..."
+    ],
+    "jump": [
+      "Why did the saylor jump in the water? Because Y knot",
+      "What’s green, has four legs, and is deadly when it jumps on you?\nA billiards table",
+      "A physicist sees a man about to jump off of the Empire State Building...\nHe yells,” Don’t do it, you have too much potential”"
     ]
   },
 
@@ -12,6 +27,21 @@
       "Wow, its dead in here, lets turn it uuup!",
       "Welcome, Welcome! Anyone want to do anything fun?",
       "Hello! I don't really have much sparetime bit here I am!"
+    ],
+    "eat": [
+      "On the topic of eating, I am actually very hungry",
+      "Please dont mention eating, I am completely full",
+      "I would rather go out and exercise than eat"
+    ],
+    "sleep": [
+      "I slept very well last night actually",
+      "I haven't slept in weeks",
+      "Good idea, let's all sleep!"
+    ],
+    "jump": [
+      "There is a species of frog that can jump higher than a 3 story house. This is due to the frog's incredibly strong hind legs, and the fact that a house can't jump.",
+      "Jumping spiders are members of the Salticidae family, and it's not an overstatement to say that a reunion among members of that family would need a pretty big space.",
+      "The eyes of jumping spiders have a decidedly odd arrangement: Two smaller eyes bracket two large eyes that rest in the center of their rectangular heads."
     ]
   },
 
@@ -20,6 +50,21 @@
       "You woke me up! Whats your reasoning",
       "yaaaawn",
       "Welcome I guess"
+    ],
+    "eat": [
+      "I do want to eat, now that you mention it",
+      "Fantastic, i love the idea of eating",
+      "No, I really don't want to eat"
+    ],
+    "sleep": [
+      "Time to go sleep",
+      "Sleep is love <3",
+      "I'm feeling drowsy"
+    ],
+    "jump": [
+      "\"I'm going to jump in the shower\"\nFunny, most people sing in the shower.",
+      "Trampolines were invented in 1936 by George Nissen and Larry Griswold.",
+      "Did you know that jumping can strengthen your eyes?"
     ]
   },
 
@@ -27,6 +72,21 @@
     "greet": [
       "Argh, there is way to many people here",
       "I am hungry, is anyone else hungry?",
-      "Hello, hope you guys don't make too much noise"]
+      "Hello, hope you guys don't make too much noise"],
+    "eat": [
+      "I haven't had any food all day",
+      "I am actually fasting, so I can't eat",
+      "NEED TO EAT!"
+    ],
+    "sleep": [
+      "You should get 7-9 hours of sleep every night",
+      "I want to sleep right now..",
+      "I never sleep"
+    ],
+    "jump": [
+      "What is the best vehicle to get a jump from?\nA cargo van.",
+      "Trampolining became an official Olympic sport during the 2000 Games in Sydney.",
+      "Jumping on a trampoline is good for your body – especially your bones!"
+    ]
   }
 }
